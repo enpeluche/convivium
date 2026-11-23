@@ -1,0 +1,485 @@
+/* ============================================================
+   CARTE DE L'ÉQUITÉ — feuille de style
+   Direction artistique reprise d'enpeluche.github.io : police Inter,
+   texte prune #271a38, accent violet #7451eb, bordures #dad9dc,
+   cartes arrondies à ombre douce, titres en petites capitales espacées.
+   Sections : 1. tokens · 2. page et en-tête · 3. légende · 4. graphe
+   5. carte · 6. sélecteur · 7. échelles · 8. algorithmes · 9. définitions
+   10. grand écran / petit écran
+   ============================================================ */
+@font-face {
+  font-family: "InterVariable";
+  src: url("fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+
+/* ============================================================
+   1. TOKENS
+   ============================================================ */
+:root {
+  --bg: #f7f6fa; --panel: #ffffff; --ink: #271a38; --muted: #6c6479;
+  --line: #dad9dc; --line-strong: #bdb8c6; --edge: #9a93a6;
+  --accent: #7451eb; --accent-fg: #ffffff; --accent-soft: rgba(116, 81, 235, 0.12);
+  /* une couleur par famille de notions */
+  --envie: #3456c9; --part: #127a74; --egal: #8247b8; --eff: #a36610;
+  /* courbes au survol */
+  --approx: #2c8a4b; --neg: #c2413b; --perdue: #b8571c; --ouvert: #d99a1e;
+  /* indices d'agents : i (moi) et j (un autre) */
+  --moi: #c2185b; --autre: #0277b0;
+  --shadow: 0 4px 15px rgba(39, 26, 56, 0.08);
+  --shadow-card: 0 14px 40px rgba(39, 26, 56, .14), 0 2px 6px rgba(39, 26, 56, .08);
+  /* onglet Algorithmes : une couleur par agent */
+  --ag0: #c2185b; --ag1: #0277b0; --ag2: #2e8b3a; --ag3: #b8571c;
+
+  --card-w: clamp(460px, 34vw, 660px);
+  --font: InterVariable, Inter, system-ui, sans-serif;
+  --font-math: KaTeX_Math, "Latin Modern Math", "STIX Two Math", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141019; --panel: #1d1724; --ink: #ece8f5; --muted: #a49cb3;
+    --line: #342c40; --line-strong: #4a4058; --edge: #7a7290;
+    --accent: #9d85ff; --accent-fg: #140f1f; --accent-soft: rgba(157, 133, 255, 0.16);
+    --envie: #8ea6ff; --part: #4fc9c0; --egal: #c69bf2; --eff: #e8b056;
+    --approx: #6fd08f; --neg: #f08a84; --perdue: #f2a46b; --ouvert: #f0b84a;
+    --moi: #ff7aa8; --autre: #5cc4f5;
+    --shadow: 0 4px 18px rgba(0, 0, 0, .35);
+    --shadow-card: 0 14px 40px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .4);
+    --ag0: #ff7aa8; --ag1: #5cc4f5; --ag2: #74d483; --ag3: #f2a46b;
+    color-scheme: dark;
+  }
+}
+
+/* ============================================================
+   2. PAGE ET EN-TÊTE
+   ============================================================ */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.katex { font-size: 1.08em; }
+
+.entete {
+  display: flex; align-items: center; gap: 10px 26px; padding: 0 22px; min-height: 60px; flex-wrap: wrap;
+  background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); position: relative; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.brand img { width: 34px; height: 34px; transition: transform .6s ease; }
+.brand:hover img { transform: rotate(45deg); }
+.brand span { display: grid; line-height: 1.2; }
+.brand b { font-weight: 650; font-size: 1rem; }
+.brand small { color: var(--muted); font-size: 0.75rem; }
+/* Onglets des cartes : soulignés en violet, comme les liens du site */
+.onglets { display: flex; gap: 2px; align-self: stretch; }
+.onglets a { display: flex; align-items: center; padding: 0 12px; color: var(--ink); text-decoration: none; font-weight: 450;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.onglets a:hover { color: var(--accent); }
+.onglets a[aria-current] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.iconlink { display: inline-flex; padding: 7px; border-radius: 8px; color: var(--ink); }
+.iconlink svg { width: 19px; height: 19px; fill: currentColor; }
+.iconlink:hover { color: var(--accent); background: var(--accent-soft); }
+/* sélecteur de langue en pilule, comme sur le site */
+.langtoggle { position: relative; display: inline-flex; margin-left: 6px; background: color-mix(in srgb, var(--line) 55%, var(--bg)); border-radius: 999px; padding: 2px; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.08); }
+.langtoggle button { position: relative; z-index: 1; width: 38px; height: 26px; border: 0; background: none; font: 700 12px var(--font); color: var(--muted); cursor: pointer; border-radius: 999px; }
+.langtoggle button[aria-pressed="true"] { color: var(--ink); }
+.langtoggle i { position: absolute; top: 2px; left: 2px; width: 38px; height: 26px; border-radius: 999px; background: var(--panel); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: transform .3s cubic-bezier(.4, 0, .2, 1); }
+.langtoggle.en i { transform: translateX(38px); }
+
+.page { padding: 16px max(16px, env(safe-area-inset-left, 0px)) 40px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 14px; }
+.titre-carte { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lien-notations { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.lien-notations:hover { text-decoration: underline; }
+.titre-carte h1 { margin: 0; font: 700 26px/1.15 var(--font); letter-spacing: -0.01em; text-wrap: balance; }
+.titre-carte h1 small { font: 400 15px var(--font); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+
+/* Bloc de définitions sous le graphe : libellé à gauche, définition à droite */
+.defs { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 20px; margin: 0; align-items: baseline; }
+.defs dt { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+.defs dd { margin: 0; font-size: 14.5px; overflow-x: auto; }
+.source { margin: 0; font-size: 13px; color: var(--muted); }
+.regle-or { margin: 0 0 4px; padding: 9px 14px; font-size: 14.5px; border-radius: 8px;
+  background: var(--accent-soft); border-left: 3px solid var(--accent); }
+a.article { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+a.article::after { content: " ↗"; font-size: .8em; }
+a.article:hover, a.article:focus-visible { color: var(--accent); text-decoration-style: solid; }
+@media (max-width: 560px) { .defs { grid-template-columns: minmax(0, 1fr); } .defs dd { margin-bottom: 6px; } }
+
+/* ============================================================
+   3. LÉGENDE
+   ============================================================ */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 14px; color: var(--muted); }
+.legend b { color: var(--ink); font-weight: 600; }
+.fam { display: inline-flex; align-items: center; gap: 7px; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; cursor: default; }
+.fam .sw { width: 14px; height: 14px; border-radius: 4px; border: 2px solid currentColor; transition: background .12s; }
+.fam:hover .sw, .fam:focus-visible .sw { background: currentColor; }
+.glyphs { display: inline-flex; gap: 14px; }
+.legend .idx { font: italic 17px var(--font-math); }
+
+/* ============================================================
+   4. LE GRAPHE (SVG)
+   ============================================================ */
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow-x: auto; padding: 8px; box-shadow: var(--shadow); }
+.diagram svg { display: block; width: 100%; min-width: 720px; height: auto; overflow: visible; }
+.rank-label { font: 600 12px var(--font); fill: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+
+.node { cursor: pointer; outline: none; }
+.node rect { fill: var(--panel); stroke-width: 2; transition: stroke-width .12s; }
+.node text { font: 700 15px var(--font); fill: var(--ink); pointer-events: none; }
+.node .glyph { font-size: 13px; fill: var(--muted); }
+.node:hover rect, .node:focus-visible rect { stroke-width: 3.2; }
+.node:focus-visible rect { stroke-dasharray: 5 3; }
+.node.fam-hl.on rect { fill: color-mix(in srgb, var(--fc) 22%, var(--panel)); stroke-width: 3; }
+
+.edge { stroke: var(--edge); stroke-width: 1.5; fill: none; transition: opacity .15s, stroke .15s; }
+.edge.on { stroke: var(--ink); stroke-width: 2.2; }
+.edge.hot { stroke-width: 3; }
+.twin { stroke: var(--edge); stroke-width: 1.4; stroke-dasharray: 5 5; fill: none; opacity: .75; }
+.twin.on { opacity: 1; stroke-width: 1.8; }
+
+.approx { stroke: var(--approx); stroke-width: 2; stroke-dasharray: 6 5; fill: none; }
+.neg { stroke: var(--neg); stroke-width: 2; stroke-dasharray: 3 4; fill: none; }
+.approx-label, .neg-label, .perdue-label { font: 700 13px var(--font); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; stroke-linejoin: round; }
+.approx-label { fill: var(--approx); }
+.neg-label { fill: var(--neg); }
+.perdue { stroke: var(--perdue); stroke-width: 2; stroke-dasharray: 9 4 2 4; fill: none; }
+.perdue-label { fill: var(--perdue); }
+.approx.hot, .neg.hot, .perdue.hot { stroke-width: 3.4; }
+.approx-label.hot, .neg-label.hot, .perdue-label.hot { font-size: 14.5px; }
+.perdue, .perdue-label, .approx, .neg, .approx-label, .neg-label { opacity: 0; pointer-events: none; transition: opacity .15s; }
+.show { opacity: 1 !important; }
+
+.hit { stroke: transparent; stroke-width: 16; fill: none; cursor: pointer; pointer-events: stroke; outline: none; }
+.hit:focus-visible { stroke: var(--line); stroke-opacity: .6; }
+.hit.ghost { pointer-events: none; }
+.hit.ghost.show { pointer-events: stroke; }
+
+.node.on rect  { fill: color-mix(in srgb, var(--fc) 10%, var(--panel)); stroke-width: 3; }
+.node.sel rect { fill: color-mix(in srgb, var(--fc) 28%, var(--panel)); stroke-width: 3.5; }
+
+/* ============================================================
+   5. LA CARTE (style « jeu des 7 familles »)
+   ============================================================ */
+.card {
+  position: fixed; z-index: 10; overflow-y: auto;
+  display: flex; flex-direction: column;
+  background: var(--panel); color: var(--ink); border-radius: 16px; box-shadow: var(--shadow-card);
+  border: 2px solid var(--fc);
+}
+.card.deal { animation: deal .16s ease-out; transform-origin: top left; }
+@keyframes deal { from { transform: translateY(-6px) rotate(-1.2deg); opacity: .4; } to { transform: none; opacity: 1; } }
+.card.vide { border: 2px dashed var(--line); box-shadow: none; background: transparent; }
+.card.vide .body { padding: 28px 22px; text-align: center; justify-content: center; }
+
+/* Intérieur : haut (titre), milieu (formule, échelle, à retenir), bas (implications) */
+.card .body { flex: 1; display: flex; flex-direction: column; gap: 20px; padding: 26px 30px 20px; font-size: 15.5px; }
+.haut { display: grid; gap: 10px; }
+.milieu { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; gap: 16px; }
+.bas { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: end; border-top: 1px dashed var(--line); padding-top: 14px; }
+.bas .c { text-align: center; }
+.bas .c .chips { justify-content: center; }
+.bas .d { text-align: right; }
+.bas .d .chips { justify-content: flex-end; }
+.band { background: var(--fc); color: var(--panel); display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 14px 8px 18px; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.close { background: none; border: 0; color: inherit; font: 700 20px/1 var(--font); cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.close:hover { background: rgba(255, 255, 255, .18); }
+.card .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sigle { font: 800 38px/1 var(--font); letter-spacing: -0.02em; color: var(--fc); }
+.sigle.link { font-size: 24px; font-weight: 400; letter-spacing: 0; }
+.src-def { margin-right: auto; font-size: 13px; color: var(--muted); }
+.status { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; border: 1.5px solid var(--line); white-space: nowrap; }
+.en { color: var(--muted); font-size: 14.5px; }
+.en i { font-style: italic; }
+.card p { margin: 0; }
+.retenir-note { font-size: 15px; }
+/* Bloc formule : quantificateurs à gauche, formule centrée, définitions sous « où » */
+.formula { background: var(--bg); border-radius: 10px; padding: 10px 16px; overflow-x: auto; display: grid; gap: 2px; border: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.formula .quant { text-align: left; color: var(--muted); line-height: 1.7; }
+.formula .corps .katex { font-size: 1.3em; }
+.formula .katex-display { margin: 8px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.formula .ou { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 4px; }
+.formula .ou-mot { font-style: italic; color: var(--muted); font-size: 13px; }
+.formula .ou .katex { font-size: 1em; }
+.ex { font-size: 14.5px; background: var(--bg); border-radius: 10px; padding: 10px 14px; }
+/* Preuve : départ, pont (trait pointillé), arrivée, hypothèses */
+.etape h3 { margin-bottom: 4px; }
+.etape .formula { padding: 6px 14px; }
+.pont { display: grid; gap: 8px; margin-left: 12px; padding: 2px 0 2px 18px; border-left: 2px dashed var(--line); }
+.pont .pas p { font-size: 14.5px; }
+.pont .katex-display { margin: 4px 0 6px; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.raisons { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13.5px; color: var(--muted); }
+.raisons .num { display: inline-block; min-width: 2.2em; font-variant-numeric: tabular-nums; }
+.hyp { font-size: 13.5px; color: var(--muted); padding-top: 2px; }
+.hyp b { color: var(--ink); }
+.vers-valuations { margin-left: 8px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--accent); }
+/* Exercice : question, puis solution repliée */
+.question { font-size: 15px; }
+.solution { margin-top: 8px; font-size: 14.5px; }
+.solution summary { cursor: pointer; width: fit-content; font-weight: 650; font-size: 13px; color: var(--accent);
+  padding: 4px 12px; border: 1.5px solid var(--accent); border-radius: 8px; list-style: none; }
+.solution summary::-webkit-details-marker { display: none; }
+.solution summary:hover, .solution summary:focus-visible { background: var(--accent); color: var(--accent-fg); outline: none; }
+.solution[open] summary { margin-bottom: 8px; }
+.solution p { background: var(--bg); border-radius: 10px; padding: 10px 14px; }
+/* Tableau d'un exemple (valuations, biens reçus) et matrice des paniers */
+.instance { background: var(--bg); border-radius: 10px; padding: 2px 14px; margin-bottom: 8px; overflow-x: auto; color: var(--muted); }
+.instance .katex { font-size: 1.12em; }
+.instance .katex-display { margin: 10px 0; }
+.instance .katex .arraycolsep { width: 0.7em !important; }
+.instance .pris { color: var(--ink); font-weight: 700; background: color-mix(in srgb, var(--fc) 22%, transparent); border-radius: 4px; padding: 0 .3em; }
+.matrice .diag { color: var(--ink); font-weight: 700; background: color-mix(in srgb, var(--ink) 9%, transparent); border-radius: 4px; padding: 0 .3em; }
+.matrice .envie { color: var(--neg); font-weight: 700; background: color-mix(in srgb, var(--neg) 14%, transparent); border-radius: 4px; padding: 0 .3em; }
+.moi { color: var(--moi); }
+.autre { color: var(--autre); }
+.card h3 { margin: 0 0 4px; font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font: 700 13px var(--font); border: 1.5px solid var(--cc); color: var(--cc); background: none; border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+.chip:hover, .chip:focus-visible { background: var(--cc); color: var(--panel); outline: none; }
+.none { font-size: 13.5px; color: var(--muted); }
+.family { border-top: 1px dashed var(--line); padding: 10px 22px 12px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.family b { color: var(--fc); }
+.family .me { color: var(--ink); font-weight: 700; text-decoration: underline 2px var(--fc); text-underline-offset: 3px; }
+
+/* ============================================================
+   6. SÉLECTEUR DE VALUATIONS
+   ============================================================ */
+#selecteur { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.sel-titre { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.glissiere { position: relative; display: inline-flex; max-width: 100%; overflow-x: auto; border: 1.5px solid var(--line); border-radius: 9px; padding: 2px; background: var(--panel); }
+.glissiere button { position: relative; z-index: 1; font: 600 13px var(--font); color: var(--muted); background: none; border: 0;
+  padding: 4px 12px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: color .3s; }
+.glissiere button:hover { color: var(--ink); }
+.glissiere button[aria-checked="true"] { color: var(--accent-fg); }
+.glissiere .curseur { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 7px; background: var(--accent);
+  transition: transform .35s cubic-bezier(.3, .7, .2, 1), width .35s cubic-bezier(.3, .7, .2, 1); }
+.interrupteur { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink); cursor: pointer; user-select: none; }
+.interrupteur input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.interrupteur .piste { position: relative; width: 30px; height: 17px; border-radius: 9px; background: var(--line); transition: background .25s; }
+.interrupteur .piste::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--panel); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .25s cubic-bezier(.3, .7, .2, 1); }
+.interrupteur input:checked + .piste { background: var(--accent); }
+.interrupteur input:checked + .piste::after { transform: translateX(13px); }
+.interrupteur input:focus-visible + .piste { outline: 2px solid var(--accent); outline-offset: 2px; }
+.interrupteur:has(input:disabled) { opacity: .5; cursor: default; }
+
+.node, .edge, .twin { transition: opacity .3s ease, transform .33s cubic-bezier(.3, .7, .2, 1); }
+.sort { opacity: 0 !important; pointer-events: none; }
+.apparait { animation: apparait .35s ease both; }
+.defusion { animation: defusion .4s cubic-bezier(.3, .7, .2, 1) both; }
+@keyframes apparait { from { opacity: 0; } }
+@keyframes defusion { from { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
+.node .glyph.inconnu { fill: var(--line); }
+.bandeau-contexte { font-size: 14px; padding: 7px 12px; border-radius: 8px; border-left: 3px solid var(--bc, var(--muted));
+  background: color-mix(in srgb, var(--bc, var(--muted)) 10%, var(--panel)); }
+.bandeau-contexte.s-yes { --bc: var(--approx); }
+.bandeau-contexte.s-no { --bc: var(--neg); }
+.bandeau-contexte.s-open { --bc: var(--ouvert); }
+.approx-ligne.attenuee { opacity: .35; }
+.approx-ligne.courante .ctx { color: var(--ink); font-weight: 700; }
+
+/* ============================================================
+   7. ÉCHELLES D'APPROXIMATION
+   ============================================================ */
+.echelle-alpha { display: flex; flex-direction: column; gap: 4px; }
+.echelle-alpha h3 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.echelle-alpha h3 .def-alpha { font-size: 14.5px; letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: 400; }
+.approx-ligne { display: grid; grid-template-columns: 10em minmax(0, 1fr); align-items: end; gap: 12px; }
+.approx-ligne:last-of-type .barre { margin-bottom: 16px; }
+.approx-ligne .ctx { font-size: 13px; color: var(--muted); line-height: 1.2; padding-bottom: 1px; }
+.barre { position: relative; height: 9px; margin: 22px 16px 6px 6px; border-radius: 5px; background: var(--line); }
+.barre .seg { position: absolute; top: 0; bottom: 0; }
+.barre .seg.vert { background: var(--approx); border-radius: 5px 0 0 5px; }
+.barre .seg.ouvert { background: repeating-linear-gradient(135deg, var(--ouvert) 0 5px, color-mix(in srgb, var(--ouvert) 55%, var(--panel)) 5px 9px); }
+.barre .seg.rouge { background: var(--neg); border-radius: 0 5px 5px 0; }
+.barre .seg.plein { border-radius: 5px; }
+.barre .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ink); }
+.barre .lab { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 1px); font-size: 14px; white-space: nowrap; color: var(--ink); }
+.barre .lab.gauche { transform: translateX(calc(-100% + 1px)); left: 0; }
+.barre .lab.droite { transform: none; left: 1px; }
+.barre .bout { position: absolute; top: calc(100% + 2px); font-size: 11px; color: var(--muted); }
+.barre .bout.g { left: 0; transform: translateX(-50%); }
+.barre .bout.d { right: 0; transform: translateX(50%); }
+.echelle-alpha details summary { cursor: pointer; font-size: 13px; color: var(--accent); width: max-content; }
+.approx-sources { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.approx-sources li { padding-left: 14px; position: relative; }
+.approx-sources li::before { content: ""; position: absolute; left: 0; top: .45em; width: 8px; height: 8px; border-radius: 50%; background: var(--pc); }
+.approx-sources b { color: var(--ink); font-weight: 700; }
+
+/* ============================================================
+   8. ONGLET ALGORITHMES
+   ============================================================ */
+.algo-barre { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 14px; color: var(--muted); }
+.algo-barre button, .algo-barre select { font: 600 13.5px var(--font); color: var(--ink); background: var(--panel);
+  border: 1.5px solid var(--line); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.algo-barre button:hover, .algo-barre select:hover { border-color: var(--accent); }
+.choix-algo { display: inline-flex; gap: 0; }
+.choix-algo button { border-radius: 0; margin-left: -1.5px; }
+.choix-algo button:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+.choix-algo button:last-child { border-radius: 0 8px 8px 0; }
+.choix-algo button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); position: relative; }
+#algo-instance { max-width: 260px; }
+.algo-barre .dim { display: inline-flex; align-items: center; gap: 6px; }
+.algo-barre .dim button { padding: 0 8px; line-height: 22px; }
+.algo-barre .dim b { color: var(--ink); min-width: 1ch; text-align: center; font-variant-numeric: tabular-nums; }
+.note-instance { flex-basis: 100%; font-size: 13.5px; }
+.note-instance:empty { display: none; }
+.algo-zone { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 12px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
+.algo-grille { flex: 1; display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 18px 28px; align-content: center; }
+.bloc-algo { min-width: 0; overflow-x: auto; }
+.bloc-algo h3, .ligne-reste h3 { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+.bloc-algo h3 .aide { margin-left: 6px; letter-spacing: 0; text-transform: none; font-weight: 400; }
+.graphe-envie { display: flex; flex-direction: column; }
+.envie-svg { width: 100%; max-width: 260px; height: auto; align-self: center; }
+.tab-algo { border-collapse: separate; border-spacing: 3px; font-variant-numeric: tabular-nums; font-size: 15px; }
+.tab-algo th, .tab-algo td { text-align: center; padding: 3px 4px; border-radius: 6px; white-space: nowrap; }
+.tab-algo thead th { font-weight: 400; color: var(--muted); vertical-align: bottom; }
+.tab-algo tbody th { text-align: left; font-weight: 700; padding-right: 10px; }
+.tab-algo .seuil { color: var(--muted); border-left: 1px solid var(--line); border-radius: 0; padding-left: 10px; }
+.tab-algo tbody tr.sorti th { opacity: .55; }
+.tab-algo td.cache { opacity: .45; font-style: italic; }
+.tab-algo td.baisse { color: var(--neg); font-weight: 700; }
+.tab-algo tbody tr.sorti td input { opacity: .55; }
+.pastille-agent { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--ac); margin-right: 7px; vertical-align: 0; }
+.valuations-algo input { width: 2.2em; font: 600 15px var(--font); font-variant-numeric: tabular-nums; text-align: center; color: var(--ink);
+  background: var(--bg); border: 1.5px solid transparent; border-radius: 6px; padding: 3px 0; -moz-appearance: textfield; appearance: textfield; }
+.valuations-algo input::-webkit-inner-spin-button, .valuations-algo input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.valuations-algo input:hover { border-color: var(--line); }
+.valuations-algo input:focus { outline: none; border-color: var(--accent); }
+.valuations-algo td.mien input { background: color-mix(in srgb, var(--ac) 26%, var(--panel)); font-weight: 800; }
+.paniers-algo td { min-width: 2.4em; }
+.paniers-algo td.diag { font-weight: 700; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.paniers-algo td.envie { color: var(--neg); font-weight: 700; background: color-mix(in srgb, var(--neg) 14%, transparent); }
+.paniers-algo thead th { line-height: 1.25; }
+.paniers-algo .nom-panier, .paniers-algo .contenu { display: block; }
+.paniers-algo .contenu { font-size: 12.5px; color: var(--ac); font-weight: 700; }
+.bien { display: inline-grid; place-items: center; min-width: 1.9em; padding: 1px 6px; border-radius: 5px; font: italic 600 15px var(--font-math);
+  border: 1.5px solid var(--line); color: var(--ink); background: var(--panel); }
+.bien.pris { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 22%, var(--panel)); }
+.bien.sac { border-style: dashed; border-color: var(--part); }
+.bien.focus { outline: 2.5px solid var(--ink); outline-offset: 1px; }
+.ligne-reste + .ligne-reste { margin-top: 12px; }
+.ligne-reste .biens { display: flex; flex-wrap: wrap; gap: 5px; min-height: 26px; align-items: center; }
+.fl-envie { fill: none; stroke: var(--neg); stroke-width: 2; }
+.fl-envie.cycle { stroke: var(--ink); stroke-width: 3.2; }
+.pointe { fill: var(--neg); }
+.pointe.cycle { fill: var(--ink); }
+.agent-noeud circle { fill: color-mix(in srgb, var(--ac) 20%, var(--panel)); stroke: var(--ac); stroke-width: 2.5; }
+.agent-noeud text { font: 700 15px var(--font); fill: var(--ink); }
+.pas-a-pas { display: flex; justify-content: center; align-items: center; gap: 6px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.pas-a-pas button { font: 700 14px var(--font); color: var(--ink); background: var(--bg); border: 1.5px solid var(--line);
+  border-radius: 8px; min-width: 38px; padding: 4px 10px; cursor: pointer; }
+.pas-a-pas button:hover:not(:disabled) { border-color: var(--accent); }
+.pas-a-pas button:disabled { opacity: .4; cursor: default; }
+.pas-a-pas .compteur { min-width: 8.5em; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); }
+.pas-a-pas .lecture { margin-left: 10px; min-width: 76px; background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.carte-algo .body { gap: 16px; }
+.algo-sigle { font-size: 28px; line-height: 1.15; }
+.pseudo { list-style: none; margin: 0; padding: 8px 0; background: var(--bg); border-radius: 10px; font-size: 14px; counter-reset: l; }
+.pseudo li { counter-increment: l; position: relative; padding: 3px 12px 3px calc(2.4em + var(--niv) * 1.3em); border-left: 3px solid transparent; }
+.pseudo li::before { content: counter(l); position: absolute; left: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pseudo li.on { background: color-mix(in srgb, var(--fc) 15%, transparent); border-left-color: var(--fc); }
+.etape-algo .ex { font-size: 15px; min-height: 3.2em; }
+.grille-props { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.prop { display: inline-flex; align-items: center; gap: 5px; }
+.prop .oui { color: var(--approx); font-weight: 700; }
+.prop .non { color: var(--neg); font-weight: 700; }
+.prop .alpha { font-size: 14.5px; color: var(--muted); }
+.garantie ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+.garantie .source { margin-top: 3px; }
+.retenir { font-size: 14.5px; }
+@media (max-width: 720px) { .algo-grille { grid-template-columns: minmax(0, 1fr); } }
+
+/* ============================================================
+   9. ONGLET DÉFINITIONS
+   ============================================================ */
+.defs-page { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; max-width: 1280px; margin: 0 auto; padding: 22px 24px 48px; }
+.defs-toc { position: sticky; top: 16px; align-self: start; display: grid; gap: 10px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.defs-toc input { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 11px; width: 100%; }
+.defs-toc input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.toc-titre { margin: 6px 0 0; font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+.defs-toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.defs-toc ul ul { margin: 2px 0 8px 10px; padding-left: 10px; border-left: 1px solid var(--line); }
+.defs-toc a { color: var(--ink); text-decoration: none; font-size: 14px; display: block; padding: 2px 6px; border-radius: 6px; }
+.defs-toc a:hover { background: var(--accent-soft); color: var(--accent); }
+.defs-toc a.toc-carte { font-weight: 650; }
+.defs-toc ul ul a { color: var(--fc, var(--muted)); font-size: 13.5px; }
+.defs-entete h1 { margin: 0; font: 750 34px/1.1 var(--font); letter-spacing: -0.015em; }
+.defs-entete .lead { color: var(--muted); margin: 8px 0 0; max-width: 70ch; }
+.def-carte { margin-top: 34px; scroll-margin-top: 16px; }
+.def-carte > h2 { margin: 0 0 10px; font: 700 24px/1.2 var(--font); padding-bottom: 8px; border-bottom: 2px solid var(--accent); }
+.def-carte > h2 small { font-weight: 400; font-size: 15px; color: var(--muted); margin-left: 6px; }
+.def-cadre { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; margin-bottom: 8px; }
+.def-cadre summary { cursor: pointer; font-weight: 650; color: var(--accent); }
+.def-cadre[open] summary { margin-bottom: 10px; }
+.def-famille { margin-top: 22px; scroll-margin-top: 16px; }
+.def-famille > h3 { display: flex; align-items: center; gap: 9px; margin: 0 0 10px; font-size: 12.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--fc); font-weight: 700; }
+.def-famille > h3 .sw { width: 13px; height: 13px; border-radius: 4px; background: var(--fc); }
+.def-notion { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--fc); border-radius: 12px; padding: 14px 20px; margin-bottom: 12px; box-shadow: var(--shadow); display: grid; gap: 10px; scroll-margin-top: 16px; }
+.def-notion header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.def-notion header .chip { font-size: 15px; padding: 3px 11px; }
+.def-notion h4 { margin: 0; font-size: 16px; font-weight: 650; margin-right: auto; }
+.def-notion h4 .en-nom { font-weight: 400; font-style: italic; color: var(--muted); }
+.def-texte { margin: 0; }
+.def-notion footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 18px; font-size: 13.5px; color: var(--muted); }
+.def-liens { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.def-liens > span { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.def-liens i { margin-right: 2px; }
+.def-liens .chip { font-size: 12px; padding: 0 7px; }
+.def-algo .pseudo li { --niv: 0; }
+.defs-aucune { color: var(--muted); font-style: italic; }
+.evolue { margin-top: 40px; text-align: center; color: var(--accent); font-style: italic; font-size: 14.5px; }
+
+/* ============================================================
+   10. GRAND ÉCRAN : graphe | carte, la page tient dans la fenêtre
+   ============================================================ */
+@media (min-width: 1180px) {
+  /* le document ne défile pas : la vue carte remplit la fenêtre, la vue définitions défile seule */
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+  .page, .defs-scroll { flex: 1; min-height: 0; width: 100%; }
+  #vue-defs { overflow-y: auto; }
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--card-w);
+    /* le graphe prend presque toute la hauteur de la fenêtre ; les notations viennent en dessous */
+    /* la page tient exactement dans la fenêtre : le graphe prend toute la hauteur restante */
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: 100%; overflow: hidden;
+    column-gap: 26px; row-gap: 12px;
+    padding: 16px 26px 32px;
+    max-width: 2000px; margin: 0 auto;
+  }
+  .wrap { display: contents; }
+  .wrap > * { grid-column: 1; }
+  .card {
+    grid-column: 2; grid-row: 1 / 4;
+    position: relative;
+    contain: size;   /* la carte ne pousse pas la hauteur des lignes : c'est le graphe qui la fixe */
+  }
+  .diagram { min-height: 0; }
+  .diagram svg { height: 100%; min-width: 0; }
+  .algo-zone { min-height: 0; }
+}
+/* Petit écran : la carte se colle en bas, par-dessus le graphe */
+@media (max-width: 1179.98px) {
+  .card { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 72vh; }
+  .card.carte-algo { position: static; max-height: none; margin: 16px auto 0; max-width: 1240px; }
+  .defs-page { grid-template-columns: minmax(0, 1fr); }
+  .defs-toc { position: static; max-height: none; }
+  .defs-toc nav { display: none; }
+  .defs-toc .toc-titre { display: none; }
+}
+@media (max-width: 760px) {
+  .entete { padding: 8px 14px; }
+  .brand small { display: none; }
+  .onglets { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .onglets a { padding: 8px 10px; white-space: nowrap; }
+  .card .body { padding: 20px 18px 16px; }
+  .defs-page { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
