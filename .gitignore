@@ -1,0 +1,8 @@
+# Bibliographie : livres et articles en PDF, gardés en local seulement
+references/
+/*.pdf
+
+# Fichiers système et éditeurs
+.DS_Store
+*~
+.vscode/

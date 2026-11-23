@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur de frustration</title>
+<meta name="description" content="Simulateur interactif : n agents partagent une ressource ; on sert l'agent dont l'état normalisé u/λ est le plus grand.">
+<meta name="author" content="Lucas Noirot">
+<link rel="icon" href="assets/favicon.ico">
+<link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ En-tête ============ -->
+  <header class="top">
+    <a class="brand" href="#" data-tab="sim" aria-label="Simulateur de frustration">
+      <img src="assets/logo.png" alt="" width="34" height="34">
+      <span><b data-i18n="app_title">Simulateur de frustration</b><small data-i18n="app_sub">Partager une ressource : service et équité</small></span>
+    </a>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="sim" id="tab-sim" aria-controls="v-sim" data-i18n="tab_sim">Simulation</button>
+      <button type="button" role="tab" data-tab="ana" id="tab-ana" aria-controls="v-ana" data-i18n="tab_ana">Analyse</button>
+      <button type="button" role="tab" data-tab="model" id="tab-model" aria-controls="v-model" data-i18n="tab_model">Modèle</button>
+      <button type="button" role="tab" data-tab="about" id="tab-about" aria-controls="v-about" data-i18n="tab_about">À propos</button>
+    </nav>
+
+    <div class="top-right">
+      <a class="iconlink" id="lk-github" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24"><path data-icon="github"/></svg></a>
+      <a class="iconlink" id="lk-linkedin" target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path data-icon="linkedin"/></svg></a>
+
+      <div class="menu" id="expmenu">
+        <button type="button" class="btn" id="expbtn" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" class="ico"><path data-icon="download"/></svg><span data-i18n="exports">Exporter</span>
+        </button>
+        <div class="menu-list" role="menu" hidden>
+          <button type="button" role="menuitem" data-exp="traj" data-i18n="exp_traj"></button>
+          <button type="button" role="menuitem" data-exp="agents" data-i18n="exp_agents"></button>
+          <button type="button" role="menuitem" data-exp="png" data-i18n="exp_png"></button>
+          <hr>
+          <button type="button" role="menuitem" data-exp="json" data-i18n="exp_json"></button>
+          <button type="button" role="menuitem" data-exp="import" data-i18n="imp_json"></button>
+          <button type="button" role="menuitem" data-exp="link" data-i18n="copy_link"></button>
+        </div>
+      </div>
+
+      <span class="langtoggle" role="group" aria-label="Langue / Language">
+        <button type="button" data-lang="fr" lang="fr">FR</button><button type="button" data-lang="en" lang="en">EN</button><i aria-hidden="true"></i>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============ Barre de lecture (Simulation et Analyse) ============ -->
+  <div class="toolbar" id="toolbar">
+    <div class="row">
+      <button class="btn primary" id="play" type="button" data-i18n-title="play_title"><svg viewBox="0 0 24 24" class="ico"><path id="playico"/></svg><span id="playtxt"></span></button>
+      <button class="btn" id="back" type="button" data-i18n="back" data-i18n-title="back_title"></button>
+      <button class="btn" id="fwd" type="button" data-i18n="fwd" data-i18n-title="fwd_title"></button>
+      <button class="btn" id="zero" type="button" data-i18n="to_zero" data-i18n-title="zero_title"></button>
+    </div>
+    <div class="row knobs">
+      <label class="knob"><span><span data-i18n="speed">Vitesse</span> <b id="speedval"></b> <span data-i18n="per_s"></span></span>
+        <input type="range" id="speed" min="0" max="8" step="1"></label>
+      <label class="knob"><span><span data-i18n="horizon">Horizon</span> <b id="winval"></b></span>
+        <input type="range" id="win" min="10" max="300" step="10"></label>
+      <label class="toggle small"><input type="checkbox" id="whole"> <span data-i18n="whole"></span></label>
+    </div>
+    <div class="row status">
+      <span class="clock"><span data-i18n="t_now">instant</span> <b>t = <span id="tnow">0</span></b></span>
+      <span class="pill served" id="served"><span id="servlab" data-i18n="served_now"></span><span class="sw" id="servsw"></span><b id="servname"></b><span class="tie" id="servtie"></span></span>
+      <span class="pill regime" id="load"></span>
+    </div>
+  </div>
+
+  <main>
+    <!-- ============ Simulation ============ -->
+    <section class="view sim" id="v-sim" role="tabpanel" aria-labelledby="tab-sim">
+      <aside class="card side">
+        <div class="group">
+          <label class="label" for="preset" data-i18n="scenario">Scénario</label>
+          <select id="preset"></select>
+          <p class="hint" id="presethint"></p>
+        </div>
+
+        <div class="group">
+          <span class="label" data-i18n="policy">Politique</span>
+          <div class="policy">
+            <b data-i18n="policy_name"></b>
+            <span class="tex" data-tex="s(t) = \chi\Bigl(\,\argmax\limits_{i \in \A} \frac{u_i(t)}{\lambda_i}\Bigr)"></span>
+          </div>
+          <span class="sublabel" data-i18n="chi"></span>
+          <div class="seg" id="chi" role="group">
+            <button type="button" data-v="prio" data-i18n="chi_prio"></button>
+            <button type="button" data-v="rot" data-i18n="chi_rot"></button>
+            <button type="button" data-v="random" data-i18n="chi_random"></button>
+          </div>
+          <div class="prio" id="priobox">
+            <div class="label-row"><span class="sublabel" data-i18n="prio_label"></span>
+              <span><button class="link small" id="prioreset" type="button" data-i18n="prio_reset"></button> · <button class="link small" id="priorev" type="button" data-i18n="prio_reverse"></button></span></div>
+            <ol class="priolist" id="priolist"></ol>
+          </div>
+          <p class="hint" id="chihint"></p>
+          <button class="link" id="reroll" type="button" data-i18n="reroll" hidden></button>
+        </div>
+
+        <div class="group">
+          <div class="label-row"><span class="label" data-i18n="agents">Agents</span><button class="link small" id="zerou0" type="button" data-i18n="zero_u0"></button></div>
+          <div class="tablewrap"><table class="edit">
+            <thead><tr><th></th><th data-i18n="col_u0">u(0)</th><th>λ</th><th>σ</th><th data-i18n="col_x">x = λ/σ</th><th></th></tr></thead>
+            <tbody id="agents"></tbody>
+            <tfoot><tr><td colspan="4" data-i18n="total_load"></td><td id="xtotal"></td><td></td></tr></tfoot>
+          </table></div>
+          <p class="msg" id="agentmsg" role="status" hidden></p>
+          <button class="link" id="addagent" type="button" data-i18n="add_agent"></button>
+        </div>
+
+        <div class="group">
+          <span class="label" data-i18n="display">Affichage</span>
+          <label class="toggle"><input type="checkbox" id="norm"> <span data-i18n="opt_norm"></span></label>
+          <label class="toggle"><input type="checkbox" id="mean"> <span data-i18n="opt_mean"></span></label>
+        </div>
+      </aside>
+
+      <section class="card stage">
+        <div class="chead">
+          <span class="ctitle" id="maintitle"></span>
+          <div class="legend" id="legend"></div>
+          <button class="btn ghost small" type="button" data-png="main" data-i18n="png" data-i18n-title="png_title"></button>
+        </div>
+        <div class="chartbox"><canvas id="c-main"></canvas></div>
+        <p class="hint"><span data-i18n="main_hint"></span> <span class="kbd-hint" data-i18n="shortcuts"></span></p>
+      </section>
+    </section>
+
+    <!-- ============ Analyse ============ -->
+    <section class="view ana" id="v-ana" role="tabpanel" aria-labelledby="tab-ana" hidden>
+      <div class="card">
+        <div class="chead">
+          <span class="label" data-i18n="hist_title"></span>
+          <label class="inline"><span data-i18n="hist_src"></span> <select id="histsrc">
+            <option value="all" data-i18n="hist_src_all"></option>
+            <option value="win" data-i18n="hist_src_win"></option>
+            <option value="per" data-i18n="hist_src_per"></option>
+          </select></label>
+          <button class="btn ghost small" type="button" data-png="hist" data-i18n="png" data-i18n-title="png_title"></button>
+        </div>
+        <div class="chartbox mid"><canvas id="c-hist"></canvas></div>
+        <div class="legend static">
+          <span><i class="box"></i><span data-i18n="hist_common"></span></span>
+          <span><i class="box plus"></i><span data-i18n="hist_plus"></span></span>
+          <span><i class="box minus"></i><span data-i18n="hist_minus"></span></span>
+          <span id="histref"><i class="dash"></i><span id="histreflab"></span></span>
+        </div>
+        <p class="hint" id="histmsg"></p>
+      </div>
+
+      <div class="card">
+        <span class="label" data-i18n="asym_title"></span>
+        <p class="asym" id="asymmsg"></p>
+        <div id="asymword" class="word" hidden></div>
+        <div class="tablewrap"><table class="res" id="asymtab"></table></div>
+      </div>
+
+      <div class="card">
+        <div class="chead">
+          <label class="label" for="globsel" data-i18n="glob_title"></label>
+          <select id="globsel"></select>
+          <button class="btn ghost small" type="button" data-png="glob" data-i18n="png" data-i18n-title="png_title"></button>
+        </div>
+        <div class="chartbox mid"><canvas id="c-glob"></canvas></div>
+        <div class="legend" id="globlegend"></div>
+      </div>
+
+      <div class="card">
+        <div class="chead">
+          <label class="label" for="persel" data-i18n="per_title"></label>
+          <select id="persel"></select>
+          <button class="btn ghost small" type="button" data-png="per" data-i18n="png" data-i18n-title="png_title"></button>
+        </div>
+        <div class="chartbox mid"><canvas id="c-per"></canvas></div>
+        <div class="legend" id="perlegend"></div>
+      </div>
+
+      <div class="card wide">
+        <span class="label" id="nowtitle"></span>
+        <div class="tablewrap"><table class="res" id="nowtab"></table></div>
+      </div>
+    </section>
+
+    <!-- ============ Modèle ============ -->
+    <section class="view doc" id="v-model" role="tabpanel" aria-labelledby="tab-model" hidden>
+      <article class="card paper">
+        <div id="modeltext"></div>
+        <p class="evolving" data-i18n="evolving"></p>
+      </article>
+    </section>
+
+    <!-- ============ À propos ============ -->
+    <section class="view doc" id="v-about" role="tabpanel" aria-labelledby="tab-about" hidden>
+      <article class="card paper about">
+        <img class="avatar" src="assets/logo.png" alt="" width="96" height="96">
+        <p class="hello" data-i18n="about_hello"></p>
+        <h1 id="aboutname"></h1>
+        <p class="role" id="aboutrole"></p>
+        <p class="about-text" data-i18n="about_text"></p>
+        <p class="evolving" data-i18n="evolving"></p>
+        <h2 class="label" data-i18n="about_find"></h2>
+        <div class="contacts" id="contacts"></div>
+      </article>
+    </section>
+  </main>
+</div>
+
+<input type="file" id="importfile" accept=".json,application/json" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/vendor/katex/contrib/auto-render.min.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/model-text.js"></script>
+<script src="assets/model.js"></script>
+<script src="assets/charts.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
