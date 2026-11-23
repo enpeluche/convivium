@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur de frustration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Un seul écran : barre de lecture en haut, deux onglets. Courbes = réglages à gauche + un grand tracé. Statistiques = quatre petits tracés + tableaux. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1b1f27; --muted: #5d6675; --line: #dde1e8; --grid: #e9ecf1;
+  --accent: #2b4fd8; --accent-fg: #ffffff; --event: #b7791f;
+  --a0: #2463eb; --a1: #d6332f; --a2: #2f8a3a; --a3: #e08a00; --a4: #7c3aed; --a5: #0f9aa8; --a6: #8b5a2b; --a7: #c2378a;
+  --p0: #1b1f27; --p1: #d6332f; --p2: #2463eb; --p3: #2f8a3a; --p4: #7c3aed; --p5: #e08a00; --p6: #0f9aa8; --p7: #c2378a; --p8: #8b5a2b; --p9: #7a8f00; --p10: #64748b;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151b; --panel: #1a1e26; --fg: #e6e9ef; --muted: #98a1b0; --line: #2c323d; --grid: #242a34;
+  --accent: #7d97ff; --accent-fg: #0d1020; --event: #e2a64a;
+  --a0: #6f9bff; --a1: #ff6b66; --a2: #5cc66a; --a3: #ffad33; --a4: #a78bfa; --a5: #3cc8d6; --a6: #c9915c; --a7: #f06bbd;
+  --p0: #e6e9ef; --p1: #ff6b66; --p2: #6f9bff; --p3: #5cc66a; --p4: #a78bfa; --p5: #ffad33; --p6: #3cc8d6; --p7: #f06bbd; --p8: #c9915c; --p9: #b7cc3a; --p10: #a3b1c6;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151b; --panel: #1a1e26; --fg: #e6e9ef; --muted: #98a1b0; --line: #2c323d; --grid: #242a34;
+  --accent: #7d97ff; --accent-fg: #0d1020; --event: #e2a64a;
+  --a0: #6f9bff; --a1: #ff6b66; --a2: #5cc66a; --a3: #ffad33; --a4: #a78bfa; --a5: #3cc8d6; --a6: #c9915c; --a7: #f06bbd;
+  --p0: #e6e9ef; --p1: #ff6b66; --p2: #6f9bff; --p3: #5cc66a; --p4: #a78bfa; --p5: #ffad33; --p6: #3cc8d6; --p7: #f06bbd; --p8: #c9915c; --p9: #b7cc3a; --p10: #a3b1c6;
+  color-scheme: dark }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.45;
+  padding: 10px 16px 12px; overflow: hidden; }
+.app { height: 100%; max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
+.law { font-family: var(--mono); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.group { display: grid; gap: 8px; min-width: 0; }
+
+select, input[type=number], input[type=text] { font: inherit; font-family: var(--mono); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; min-width: 0; width: 100%; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.btn { font: inherit; font-weight: 500; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); min-width: 84px; }
+.btn:hover { filter: brightness(0.97); }
+.link { font: inherit; font-size: 0.85rem; color: var(--accent); background: none; border: 0; padding: 2px 0; cursor: pointer; justify-self: start; }
+.link:hover { text-decoration: underline; }
+.link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+
+.seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { flex: 1; font: inherit; font-size: 0.85rem; padding: 5px 8px; border: 0; background: var(--bg); color: var(--fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+
+/* Barre du haut */
+.bar { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between; padding: 8px 12px; }
+.tabs button { padding: 6px 16px; font-weight: 500; }
+.knob { display: grid; grid-template-columns: auto 110px; gap: 2px 8px; align-items: center; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.knob b { font-family: var(--mono); font-weight: 500; color: var(--fg); }
+.clock { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.clock b { font-size: 1.25rem; font-weight: 500; display: inline-block; min-width: 3ch; }
+.load { font-family: var(--mono); font-size: 0.85rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+.load.over { color: var(--a1); border-color: currentColor; }
+.load.under { color: var(--a2); border-color: currentColor; }
+.load.crit { color: var(--event); border-color: currentColor; }
+
+/* Vues */
+.view { flex: 1; min-height: 0; }
+#v-courbes { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 10px; }
+.side { overflow-y: auto; display: flex; flex-direction: column; padding: 0 12px; }
+.side > * { padding: 12px 0; }
+.side > * + * { border-top: 1px solid var(--line); }
+.stage { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.stage .chartbox { flex: 1; min-height: 0; }
+#v-stats { overflow-y: auto; display: grid; gap: 10px; align-content: start; }
+
+/* Sections repliables */
+.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-radius: 4px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary .label::before { content: "▸"; display: inline-block; width: 1.1em; }
+.fold[open] > summary .label::before { content: "▾"; }
+.fold > summary .sum { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+.fold > .group { margin-top: 10px; }
+
+.tablewrap { overflow-x: auto; }
+table.edit { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.edit th { font-size: 0.7rem; color: var(--muted); font-weight: 500; text-align: left; padding: 0 3px 4px; white-space: nowrap; }
+table.edit td { padding: 2px 3px; }
+table.edit input, table.edit select { padding: 3px 4px; font-size: 0.85rem; }
+table.edit select { min-width: 54px; }
+table.edit input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+table.edit input::-webkit-inner-spin-button, table.edit input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.chip { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 5px;
+  font-family: var(--mono); font-weight: 500; color: var(--accent-fg); font-size: 0.85rem; }
+.x { font: inherit; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.x:hover { color: var(--fg); background: var(--bg); }
+
+.params { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; align-items: center; }
+.params label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.params input { width: 58px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.toggle { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+
+/* Tracés */
+.chartbox { position: relative; width: 100%; }
+.chartbox.mid { height: clamp(180px, 26vh, 340px); }
+canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.chead { display: flex; gap: 8px 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.chead select { width: auto; max-width: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--mono); font-size: 0.8rem; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dash { background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px); height: 2px; }
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.duo > .panel { display: grid; gap: 8px; align-content: start; }
+
+.statbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 8px 12px; }
+.statbar select { width: auto; }
+.statbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pchip { font: inherit; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--muted); cursor: pointer; }
+.pchip i { width: 12px; height: 3px; border-radius: 2px; display: block; opacity: 0.35; }
+.pchip[aria-pressed="true"] { color: var(--fg); border-color: var(--muted); background: var(--panel); }
+.pchip[aria-pressed="true"] i { opacity: 1; }
+
+table.res { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.85rem; }
+table.res th { font-family: var(--sans); font-size: 0.75rem; font-weight: 500; color: var(--muted); text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.res th:first-child, table.res td:first-child { text-align: left; }
+table.res td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.res td.best { font-weight: 500; color: var(--accent); }
+
+/* Écran étroit ou bas : la page défile normalement, le tracé passe avant les réglages */
+@media (max-width: 900px), (max-height: 540px) {
+  html, body { height: auto; }
+  body { overflow: visible; }
+  .app { height: auto; }
+  .bar { position: sticky; top: 0; z-index: 5; }
+  #v-courbes { grid-template-columns: minmax(0, 1fr); }
+  .side { overflow: visible; order: 2; }
+  .stage .chartbox { flex: none; height: 320px; }
+  #v-stats { overflow: visible; }
+  .duo { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="panel bar">
+    <div class="seg tabs" role="tablist" aria-label="Vue">
+      <button type="button" role="tab" id="tab-courbes" aria-controls="v-courbes" aria-selected="true">Courbes</button>
+      <button type="button" role="tab" id="tab-stats" aria-controls="v-stats" aria-selected="false">Statistiques</button>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="play" type="button">Pause</button>
+      <button class="btn" id="step" type="button">+1 jour</button>
+      <button class="btn" id="reset" type="button">Revenir à t = 0</button>
+    </div>
+    <div class="row" style="gap: 8px 20px">
+      <label class="knob" for="speed"><span>Vitesse <b id="speedval">0,5</b> j/s</span>
+        <input type="range" id="speed" min="0.25" max="4" step="0.25" value="0.5"></label>
+      <label class="knob" for="win"><span>Horizon <b id="winval">20</b> j</span>
+        <input type="range" id="win" min="10" max="90" step="5" value="20"></label>
+    </div>
+    <div class="row">
+      <span class="clock">jour <b id="tnow">0</b></span>
+      <span class="load" id="load">X = 1</span>
+      <span class="load" id="rescount" hidden></span>
+      <span class="load" id="adamode" hidden></span>
+    </div>
+  </div>
+
+  <!-- Onglet Courbes -->
+  <div class="view" id="v-courbes" role="tabpanel" aria-labelledby="tab-courbes">
+    <aside class="panel side" aria-label="Réglages">
+      <div class="group">
+        <label class="label" for="preset">Scénario</label>
+        <select id="preset"></select>
+        <p class="hint" id="presethint"></p>
+        <button class="link" id="reroll" type="button">Refaire le tirage au sort</button>
+      </div>
+
+      <div class="group">
+        <label class="label" for="focus">Politique</label>
+        <select id="focus"></select>
+        <p class="hint law" id="focuslaw"></p>
+        <div class="group" id="motbox" hidden>
+          <label class="hint" for="word">Mot imposé, répété en boucle</label>
+          <input type="text" id="word" value="BCABCBCABC" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="group" id="mixbox" hidden>
+          <span class="hint">Politique mixte : poids entre deux scores</span>
+          <div class="pair">
+            <select id="mixp" aria-label="Première politique du mélange"></select>
+            <select id="mixq" aria-label="Seconde politique du mélange"></select>
+          </div>
+          <input type="range" id="mixw" min="0" max="100" step="5" value="50" aria-label="Poids de la première politique">
+          <p class="hint law" id="mixhint"></p>
+        </div>
+      </div>
+
+      <details class="fold" id="f-agents" open>
+        <summary><span class="label">Agents</span><span class="sum" id="sum-agents"></span></summary>
+        <div class="group">
+          <div class="tablewrap"><table class="edit">
+            <thead><tr id="agentshead"></tr></thead>
+            <tbody id="agents"></tbody>
+          </table></div>
+          <button class="link" id="addagent" type="button">+ Ajouter un agent</button>
+        </div>
+      </details>
+
+      <details class="fold" id="f-pres">
+        <summary><span class="label">Arrivées et départs</span><span class="sum" id="sum-pres"></span></summary>
+        <div class="group">
+          <div class="seg" role="group" aria-label="Arrivées et départs" id="presmode">
+            <button type="button" data-v="dates">Dates</button>
+            <button type="button" data-v="cycle">Cycle</button>
+            <button type="button" data-v="hasard">Hasard</button>
+          </div>
+          <div class="params" id="presparams">
+            <label for="pon"><span id="ponlab">présent</span> <input type="number" id="pon" min="1" step="1"> j</label>
+            <label for="poff"><span id="pofflab">absent</span> <input type="number" id="poff" min="1" step="1"> j</label>
+          </div>
+          <p class="hint" id="preshint"></p>
+        </div>
+      </details>
+
+      <details class="fold" id="f-pas">
+        <summary><span class="label">Pas a et b</span><span class="sum" id="sum-pas"></span></summary>
+        <div class="group">
+          <div class="seg" role="group" aria-label="Pas a et b" id="pasmode">
+            <button type="button" data-v="fixe">Dates</button>
+            <button type="button" data-v="cycle">Cycle</button>
+            <button type="button" data-v="hasard">Hasard</button>
+          </div>
+          <div class="group" id="pasfixe">
+            <div class="tablewrap"><table class="edit">
+              <thead><tr><th>jour</th><th>agent</th><th>nouveau a</th><th>nouveau b</th><th></th></tr></thead>
+              <tbody id="changes"></tbody>
+            </table></div>
+            <button class="link" id="addchange" type="button">+ Ajouter un changement</button>
+          </div>
+          <div class="params" id="pasparams">
+            <label for="pev"><span id="pevlab">tous les</span> <input type="number" id="pev" min="1" step="1"> j</label>
+            <label for="pamp">amplitude <input type="number" id="pamp" min="1" step="1"></label>
+          </div>
+          <p class="hint" id="pashint"></p>
+        </div>
+      </details>
+
+      <details class="fold" id="f-boost">
+        <summary><span class="label">Ressources en plus</span><span class="sum" id="sum-boost"></span></summary>
+        <div class="group">
+          <label class="toggle"><input type="checkbox" id="auto"> Automatiques</label>
+          <p class="hint">Chaque matin, si un agent sans marge ne peut plus retomber à 0 à temps, le plus pressé d'entre eux reçoit un service de plus. Chaque politique dépense les siennes.</p>
+          <div class="tablewrap"><table class="edit">
+            <thead><tr><th>jour</th><th>agent</th><th></th></tr></thead>
+            <tbody id="boosts"></tbody>
+          </table></div>
+          <button class="link" id="addboost" type="button">+ Ajouter une ressource à la main</button>
+          <p class="hint">Au matin du jour choisi, la frustration de l'agent baisse de a : on voit une chute verticale sur le tracé.</p>
+        </div>
+      </details>
+
+      <details class="fold" id="f-opts">
+        <summary><span class="label">Options</span><span class="sum" id="sum-opts"></span></summary>
+        <div class="group">
+          <label class="toggle"><input type="checkbox" id="floor"> Plancher à 0</label>
+          <label class="toggle"><input type="checkbox" id="mean" checked> Tracer la moyenne ū</label>
+          <label class="toggle"><input type="checkbox" id="whole"> Tout l'historique au lieu de l'horizon</label>
+          <span class="hint">Règle d'égalité</span>
+          <div class="seg" role="group" aria-label="Règle d'égalité" id="tie">
+            <button type="button" data-v="fixe">Fixe</button>
+            <button type="button" data-v="tournante">Tourniquet</button>
+            <button type="button" data-v="aleatoire">Aléatoire</button>
+          </div>
+          <p class="hint" id="tiehint"></p>
+        </div>
+      </details>
+    </aside>
+
+    <section class="panel stage">
+      <div class="chead">
+        <span class="label" id="maintitle">Frustrations</span>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="chartbox"><canvas id="main" aria-label="Frustration de chaque agent sur l'horizon affiché"></canvas></div>
+      <p class="hint">Bande du bas : l'agent servi chaque jour. Pointillés : arrivées, départs, changements de pas et ressources en plus.</p>
+    </section>
+  </div>
+
+  <!-- Onglet Statistiques -->
+  <div class="view" id="v-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
+    <div class="panel statbar">
+      <label class="label" for="focus2">Politique affichée</label>
+      <select id="focus2"></select>
+      <span class="sep"></span>
+      <span class="label">Comparer</span>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="duo">
+      <div class="panel">
+        <div class="chead"><span class="label" id="minititle">Frustrations</span></div>
+        <div class="chartbox mid"><canvas id="mini" aria-label="Frustration de chaque agent, vue réduite"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="chead"><span class="label" id="c3title">Moyenne par agent depuis t = 0</span></div>
+        <div class="chartbox mid"><canvas id="c3" aria-label="Frustration moyenne de chaque agent depuis le début"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="chead"><label class="label" for="m1">Équité</label><select id="m1"></select></div>
+        <div class="chartbox mid"><canvas id="c1" aria-label="Comparaison des politiques, indicateur d'équité"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="chead"><label class="label" for="m2">Efficacité</label><select id="m2"></select></div>
+        <div class="chartbox mid"><canvas id="c2" aria-label="Comparaison des politiques, indicateur d'efficacité"></canvas></div>
+      </div>
+      <div class="panel">
+        <span class="label" id="poltitle">Politiques</span>
+        <div class="tablewrap"><table class="res" id="polres"></table></div>
+      </div>
+      <div class="panel">
+        <span class="label" id="agtitle">Agents</span>
+        <div class="tablewrap"><table class="res" id="agres"></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NAMES = "ABCDEFGH";
+const EPS = 1e-9;
+const $ = id => document.getElementById(id);
+const cssCache = new Map();
+const css = name => {
+  let v = cssCache.get(name);
+  if (v === undefined) { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); cssCache.set(name, v); }
+  return v;
+};
+const acol = i => css("--a" + (i % 8));
+const pcol = k => css("--p" + POLS[k].c);
+const fmt = x => {
+  if (x === null || !isFinite(x)) return "—";
+  const r = Math.round(x * 100) / 100;
+  return (Object.is(r, -0) ? 0 : r).toString().replace(".", ",");
+};
+
+/* ---------------- Politiques ---------------- */
+const POLS = [
+  { id: "u",   c: 0, name: "Plus frustré",    law: "argmax u",                  expr: "u" },
+  { id: "ut",  c: 8, name: "Plus frustré + tourniquet", law: "argmax u ; 1re égalité : A, 2e : B, 3e : C…" },
+  { id: "esc", c: 9, name: "Vers l'escalier", law: "agents sans marge servis juste à temps ; sinon le plus frustré de ceux qui ont de la marge" },
+  { id: "ada", c: 10, name: "Adaptative", law: "escalier possible : Vers l'escalier ; sinon Retard pondéré si 0,875 ≤ X ≤ 1, Plus frustré ailleurs" },
+  { id: "aw",  c: 1, name: "Anti-gaspillage", law: "argmax u − max(0, a − u)",  expr: "u − max(0, a − u)" },
+  { id: "ub",  c: 2, name: "Âge",             law: "argmax u / b",              expr: "u / b" },
+  { id: "uc",  c: 3, name: "Retard pondéré",  law: "argmax u / c",              expr: "u / c" },
+  { id: "lag", c: 4, name: "Plus en retard",  law: "argmax Σ x − N",            expr: "Σ x − N" },
+  { id: "rr",  c: 5, name: "Tourniquet",      law: "A, B, C, …" },
+  { id: "mot", c: 6, name: "Mot imposé",      law: "" },
+  { id: "mix", c: 7, name: "Mixte",           law: "" },
+];
+const polIndex = id => POLS.findIndex(p => p.id === id);
+const TIE_HINTS = {
+  fixe: "En cas d'égalité, on sert le premier dans l'ordre A, B, C… « Plus frustré + tourniquet » garde sa propre règle.",
+  tournante: "En cas d'égalité, on sert le premier ex æquo après le dernier agent choisi ainsi. « Plus frustré + tourniquet » garde sa propre règle.",
+  aleatoire: "En cas d'égalité, tirage au sort. « Plus frustré + tourniquet » garde sa propre règle."
+};
+const PRES_HINTS = {
+  dates: "Chaque agent arrive et part aux jours indiqués dans le tableau des agents.",
+  cycle: "Chaque agent est présent puis absent, en boucle. Les agents sont décalés les uns des autres. À chaque retour il repart de u(0).",
+  hasard: "Chaque jour, un agent présent peut partir et un absent revenir. À chaque retour il repart de u(0)."
+};
+const PAS_HINTS = {
+  fixe: "",
+  cycle: "À tour de rôle, un agent voit son a augmenter de l'amplitude pendant une période, puis revient à ses valeurs. Au tour suivant c'est son b.",
+  hasard: "De temps en temps, un agent tiré au sort reçoit de nouveaux a et b, à ± l'amplitude de ses valeurs de départ."
+};
+
+/* ---------------- Scénarios ---------------- */
+const PRESETS = {
+  diapo: { g: 0,
+    name: "Trois agents, a = (4, 2, 2), b = 1",
+    hint: "L'exemple des diapositives : départ (2, 2, 2), plancher. Le mot imposé ramène tout le monde dans [0, 2].",
+    floor: true, tie: "fixe", word: "BCABCBCABC", show: ["u", "ut", "aw", "rr", "mot"], focus: "aw",
+    agents: [[2, 4, 1, 0, null], [2, 2, 1, 0, null], [2, 2, 1, 0, null]], changes: []
+  },
+  arrivee: { g: 0,
+    name: "Arrivée, puis changement de pas",
+    hint: "Quatre agents a = 5, b = 1 avec plancher (X = 2/3). E arrive au jour 30 (X = 5/6), puis A passe à a = 3 au jour 60.",
+    floor: true, tie: "fixe", show: ["u", "ut", "aw", "ub", "rr"], focus: "u",
+    agents: [[5, 5, 1, 0, null], [5, 5, 1, 0, null], [5, 5, 1, 0, null], [5, 5, 1, 0, null], [0, 5, 1, 30, null]],
+    changes: [[60, 0, 3, 1]]
+  },
+  surcharge: { g: 0,
+    name: "Surcharge, puis un départ",
+    hint: "Quatre agents a = 2, b = 1 : X = 4/3, la frustration dérive. D part au jour 40 : X = 1, la dérive s'arrête.",
+    floor: true, tie: "fixe", show: ["u", "aw", "ub", "lag"], focus: "u",
+    agents: [[0, 2, 1, 0, null], [0, 2, 1, 0, null], [0, 2, 1, 0, null], [0, 2, 1, 0, 40]], changes: []
+  },
+  flux: { g: 0,
+    name: "Flux d'agents",
+    hint: "Six agents hétérogènes qui arrivent et partent à des dates différentes, avec plancher. La charge X change à chaque événement.",
+    floor: true, tie: "tournante", show: ["u", "ada", "aw", "ub", "lag", "rr"], focus: "u",
+    agents: [[0, 3, 1, 0, null], [2, 2, 1, 0, 50], [0, 4, 1, 10, 80], [0, 1, 1, 25, null], [0, 5, 2, 45, 100], [0, 2, 1, 70, null]],
+    changes: []
+  },
+  utilites: { g: 0,
+    name: "Pas qui changent",
+    hint: "Trois agents a = 2, b = 1 avec plancher. B attend deux fois plus mal du jour 20 au jour 50 (b = 2) ; C est servi plus fort à partir du jour 35 (a = 4).",
+    floor: true, tie: "fixe", show: ["u", "aw", "ub", "uc"], focus: "u",
+    agents: [[1, 2, 1, 0, null], [1, 2, 1, 0, null], [1, 2, 1, 0, null]],
+    changes: [[20, 1, 2, 2], [50, 1, 2, 1], [35, 2, 4, 1]]
+  },
+  deux: { g: 0,
+    name: "Deux agents (2, 1) et (1, 1), sans plancher",
+    hint: "Le modèle relaxé : ABBAB se répète et les deux frustrations descendent à la même vitesse, −1/5 par jour.",
+    floor: false, tie: "fixe", show: ["u", "ub", "rr"], focus: "u",
+    agents: [[0, 2, 1, 0, null], [0, 1, 1, 0, null]], changes: []
+  },
+  hetero: { g: 0,
+    name: "Hétérogènes, X ≈ 0,82",
+    hint: "A (2, 1), B (4, 1), C (5, 2), départ à 3 pour tous, plancher.",
+    floor: true, tie: "fixe", show: ["u", "aw", "ub", "uc"], focus: "aw",
+    agents: [[3, 2, 1, 0, null], [3, 4, 1, 0, null], [3, 5, 2, 0, null]], changes: []
+  },
+  escalier: { g: 0,
+    name: "Escalier, 4 agents",
+    hint: "Quatre agents a = 3, b = 1, départ (0, 1, 2, 3). Le plus frustré retombe à 0, les autres montent d'une marche : tourniquet de période 4, sans gaspillage. Avec n agents, il faut a = n − 1. Mets tous les u(0) à 0 : l'escalier s'installe en 4 jours.",
+    floor: true, tie: "fixe", show: ["u", "ut", "ub", "rr"], focus: "u",
+    agents: [[0, 3, 1, 0, null], [1, 3, 1, 0, null], [2, 3, 1, 0, null], [3, 3, 1, 0, null]], changes: []
+  },
+  entrer: { g: 0,
+    name: "Entrer dans l'escalier",
+    hint: "A (a = 4) a de la marge ; B, C, D (a = 3) n'en ont pas. Départ (1, 2, 2, 2), somme 7. « Plus frustré » reste bloqué à 7. « Vers l'escalier » fait attendre A pour le servir à 4 pile et entre dans l'escalier (somme 6) au jour 19.",
+    floor: true, tie: "fixe", show: ["u", "esc"], focus: "esc", m2: "exces",
+    agents: [[1, 4, 1, 0, null], [2, 3, 1, 0, null], [2, 3, 1, 0, null], [2, 3, 1, 0, null]], changes: []
+  },
+  entrerplus: { g: 0,
+    name: "Entrer dans l'escalier, ressources automatiques",
+    hint: "Le même départ, avec les ressources automatiques. Au matin du jour 0, B reçoit un service de plus (chute verticale) : une seule ressource, et l'escalier tient dès le jour 1 avec « Plus frustré » comme avec « Vers l'escalier ». « Tourniquet » en dépense 3.",
+    floor: true, tie: "fixe", show: ["u", "esc", "rr"], focus: "u", m2: "res", auto: true,
+    agents: [[1, 4, 1, 0, null], [2, 3, 1, 0, null], [2, 3, 1, 0, null], [2, 3, 1, 0, null]], changes: []
+  },
+  ressource: { g: 0,
+    name: "Une ressource en plus",
+    hint: "Deux agents a = b = 1, départ (0, 2) : ils oscillent entre 0 et 2. Au jour 10, B reçoit un service de plus, et ils oscillent ensuite entre 0 et 1.",
+    floor: true, tie: "tournante", show: ["u", "ut", "rr"], focus: "u",
+    agents: [[0, 1, 1, 0, null], [2, 1, 1, 0, null]], changes: [], boosts: [[10, 1]]
+  },
+  prescycle: { g: 1,
+    name: "Présences cycliques",
+    hint: "Quatre agents a = 2, b = 1, chacun présent 20 jours puis absent 10, en décalé. Ils sont deux ou trois à la fois : X alterne entre 2/3 et 1.",
+    floor: true, tie: "fixe", show: ["u", "aw", "ub", "lag"], focus: "u",
+    agents: [[0, 2, 1, 0, null], [0, 2, 1, 0, null], [0, 2, 1, 0, null], [0, 2, 1, 0, null]], changes: [],
+    pres: { mode: "cycle", on: 20, off: 10 }
+  },
+  preshasard: { g: 1,
+    name: "Présences au hasard",
+    hint: "Six agents hétérogènes. Séjour moyen de 20 jours, absence moyenne de 20 jours : X vaut 0,95 en moyenne mais bouge sans cesse.",
+    floor: true, tie: "tournante", show: ["u", "ada", "aw", "ub", "lag"], focus: "u",
+    agents: [[0, 3, 1, 0, null], [0, 2, 1, 0, null], [0, 4, 1, 0, null], [0, 1, 1, 0, null], [0, 5, 2, 0, null], [0, 2, 1, 0, null]], changes: [],
+    pres: { mode: "hasard", on: 20, off: 20 }
+  },
+  pascycle: { g: 1,
+    name: "Pas cycliques",
+    hint: "Trois agents a = 2, b = 1 (X = 1). Tous les 10 jours, un agent à tour de rôle passe à a = 4 (X < 1), puis au tour suivant à b = 3 (X > 1).",
+    floor: true, tie: "fixe", show: ["u", "aw", "ub", "uc"], focus: "u",
+    agents: [[1, 2, 1, 0, null], [1, 2, 1, 0, null], [1, 2, 1, 0, null]], changes: [],
+    pas: { mode: "cycle", every: 10, amp: 2 }
+  },
+  pashasard: { g: 1,
+    name: "Pas au hasard",
+    hint: "Trois agents (4, 1), (4, 1), (4, 2), X = 11/15 au départ. Tous les 12 jours en moyenne, l'un d'eux tire de nouveaux a et b à ± 1.",
+    floor: true, tie: "fixe", show: ["u", "aw", "ub", "uc"], focus: "u",
+    agents: [[1, 4, 1, 0, null], [1, 4, 1, 0, null], [1, 4, 2, 0, null]], changes: [],
+    pas: { mode: "hasard", every: 12, amp: 1 }
+  },
+  touthasard: { g: 1,
+    name: "Tout au hasard",
+    hint: "Cinq agents qui vont et viennent, et dont les pas changent au hasard. La politique mixte est dans la comparaison.",
+    floor: true, tie: "tournante", show: ["u", "ada", "ub", "lag", "mix"], focus: "u",
+    agents: [[0, 3, 1, 0, null], [0, 2, 1, 0, null], [0, 4, 1, 0, null], [0, 3, 2, 0, null], [0, 2, 1, 0, null]], changes: [],
+    pres: { mode: "hasard", on: 20, off: 20 }, pas: { mode: "hasard", every: 15, amp: 1 }
+  },
+};
+const PRESET_GROUPS = ["Exemples", "Cycles et hasard"];
+
+const cfg = { floor: true, tie: "fixe", word: "BCABCBCABC", mean: true, whole: false, win: 20, speed: 0.5, seed: 1,
+  agents: [], changes: [],
+  boosts: [],                                    // ressources en plus : [jour, agent]
+  auto: false,                                   // ressources automatiques
+  pres: { mode: "dates", on: 20, off: 10 },      // arrivées et départs
+  pas: { mode: "fixe", every: 10, amp: 2 },      // changements de a et b
+  mix: { p: "u", q: "lag", w: 50 },              // politique mixte : w % de p, le reste de q
+  show: new Set(["u"]), focus: "u", m1: "ecart", m2: "moy" };
+
+/* ---------------- Indicateurs ---------------- */
+const METRICS = {
+  ecart:  { g: 1, name: "écart max − min du jour", f: (S, t) => S.day[t].ecart },
+  ecartm: { g: 1, name: "écart moyen depuis t = 0", f: (S, t) => S.cum[t].ecart / (t + 1) },
+  max:    { g: 1, name: "max du jour", f: (S, t) => S.day[t].max },
+  maxm:   { g: 1, name: "max moyen depuis t = 0", f: (S, t) => S.cum[t].max / (t + 1) },
+  moy:    { g: 2, name: "moyenne ū du jour", f: (S, t) => S.day[t].moy },
+  moym:   { g: 2, name: "ū moyen depuis t = 0", f: (S, t) => S.cum[t].moy / (t + 1) },
+  somme:  { g: 2, name: "somme Σ u du jour", f: (S, t) => S.day[t].somme },
+  phi:    { g: 2, name: "Φ = Σ u / c du jour", f: (S, t) => S.day[t].phi },
+  gaspi:  { g: 2, name: "gaspillage cumulé", f: (S, t) => S.cum[t].gaspi },
+  exces:  { g: 2, name: "excès sur l'escalier", f: (S, t) => S.day[t].exces },
+  res:    { g: 2, name: "ressources en plus, cumul", f: (S, t) => S.cum[t].res },
+};
+
+/* ---------------- Le monde : qui est là, avec quels pas, jour par jour ----------------
+   Calculé une seule fois et partagé par toutes les politiques, pour qu'elles vivent les mêmes événements. */
+function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+let W = null;
+function newWorld() {
+  const n = cfg.agents.length;
+  return { n, pres: [], a: [], b: [], boost: [], ev: [], nev: 0, here: Array(n).fill(false),
+    ca: cfg.agents.map(r => r[1]), cb: cfg.agents.map(r => r[2]), rng: mulberry(9001 + 7919 * cfg.seed) };
+}
+function stepWorld() {
+  const t = W.pres.length, n = W.n, ev = [], P = cfg.pres, Q = cfg.pas, per = P.on + P.off;
+  // présences
+  for (let i = 0; i < n; i++) {
+    const r = cfg.agents[i], was = W.here[i]; let now;
+    if (P.mode === "cycle") now = (t + Math.round(i * per / n)) % per < P.on;
+    else if (P.mode === "hasard") { const x = W.rng(); now = t === 0 ? x < P.on / per : was ? x >= 1 / P.on : x < 1 / P.off; }
+    else now = t >= r[3] && (r[4] === null || t < r[4]);
+    if (t > 0 && now !== was) ev.push(`${NAMES[i]} ${now ? "arrive" : "part"}`);
+    W.here[i] = now;
+  }
+  if (t === 0 && P.mode === "hasard" && !W.here.includes(true)) W.here[0] = true;
+  // pas
+  const set = (i, na, nb) => {
+    if (i >= n || (W.ca[i] === na && W.cb[i] === nb)) return;
+    W.ca[i] = na; W.cb[i] = nb; ev.push(`${NAMES[i]} : a = ${fmt(na)}, b = ${fmt(nb)}`);
+  };
+  if (Q.mode === "fixe") { for (const [d, i, na, nb] of cfg.changes) if (d === t) set(i, na, nb); }
+  else if (Q.mode === "cycle") {
+    if (t > 0 && t % Q.every === 0) {
+      const m = t / Q.every;
+      if (m >= 2 && n > 1) { const p = (m - 2) % n; set(p, cfg.agents[p][1], cfg.agents[p][2]); }
+      const i = (m - 1) % n, onA = Math.floor((m - 1) / n) % 2 === 0;
+      set(i, cfg.agents[i][1] + (onA ? Q.amp : 0), cfg.agents[i][2] + (onA ? 0 : Q.amp));
+    }
+  } else if (t > 0 && W.rng() < 1 / Q.every) {
+    const i = Math.floor(W.rng() * n), r = cfg.agents[i];
+    const draw = v => { const lo = Math.max(1, v - Q.amp); return lo + Math.floor(W.rng() * (v + Q.amp - lo + 1)); };
+    set(i, draw(r[1]), draw(r[2]));
+  }
+  // ressources en plus (ignorées si l'agent est absent ce jour-là)
+  const bo = [];
+  for (const [d, i] of cfg.boosts) if (d === t && i < n && W.here[i]) { bo.push(i); ev.push(`${NAMES[i]} : +1 service`); }
+  W.pres.push(W.here.slice()); W.a.push(W.ca.slice()); W.b.push(W.cb.slice()); W.boost.push(bo);
+  W.ev.push(ev.length ? { lab: ev.join(" · "), row: W.nev++ % 3 } : null);
+}
+function ensureWorld(T) { while (W.pres.length <= T) stepWorld(); }
+function loadAt(t) {
+  ensureWorld(t); let X = 0;
+  for (let i = 0; i < W.n; i++) if (W.pres[t][i]) X += W.b[t][i] / (W.a[t][i] + W.b[t][i]);
+  return X;
+}
+function fracStr(x) {
+  for (let q = 1; q <= 60; q++) { const p = Math.round(x * q); if (Math.abs(p / q - x) < 1e-9) return q === 1 ? `${p}` : `${p}/${q}`; }
+  return fmt(x);
+}
+
+/* ---------------- Simulation d'une politique ---------------- */
+function newSim(pid, k) {
+  const n = cfg.agents.length;
+  return { pid, k, n, a: null, b: null, cur: Array(n).fill(null), u: [], out: [], pre: [], served: [], waste: [],
+    N: Array(n).fill(0), E: Array(n).fill(0), lag: [],            // services reçus, services dus, retard jour par jour
+    su: Array(n).fill(0), sn: Array(n).fill(0), mu: [],           // moyenne cumulée de u par agent
+    rot: 0, rr: 0, wk: 0, tk: 0, mode: null, modes: [], rng: mulberry(1234 + 97 * POLS[k].c + 31 * (cfg.seed - 1)), day: [], cum: [] };
+}
+const SCORE = {
+  u:   (S, i) => S.cur[i],
+  aw:  (S, i) => S.cur[i] - (cfg.floor ? Math.max(0, S.a[i] - S.cur[i]) : 0),
+  ub:  (S, i) => S.cur[i] / S.b[i],
+  uc:  (S, i) => S.cur[i] / (S.a[i] + S.b[i]),
+  lag: (S, i) => S.E[i] - S.N[i],
+};
+function choose(S, pres) {
+  const n = S.n;
+  if (S.pid === "rr") {
+    for (let d = 0; d < n; d++) { const i = (S.rr + d) % n; if (pres.includes(i)) { S.rr = i + 1; return i; } }
+  }
+  if (S.pid === "mot") {
+    const w = cfg.word.toUpperCase().replace(/[^A-H]/g, "");
+    if (w.length) { const i = NAMES.indexOf(w[S.wk % w.length]); S.wk++; if (pres.includes(i)) return i; }
+  }
+  if (S.pid === "ut") {
+    let M = -Infinity; for (const i of pres) M = Math.max(M, S.cur[i]);
+    const cand = pres.filter(i => S.cur[i] >= M - EPS);
+    if (cand.length === 1) return cand[0];
+    const p = S.tk++ % n;       // si cet agent n'est pas ex æquo, on prend le suivant qui l'est
+    return cand.reduce((best, i) => ((i - p + n) % n) < ((best - p + n) % n) ? i : best);
+  }
+  // Adaptative : la règle du jour dépend de la charge X des agents présents (elle change avec les arrivées, les départs et les pas).
+  let pid = S.pid;
+  if (pid === "ada") {
+    const m = pres.length; let X = 0; for (const i of pres) X += S.b[i] / (S.a[i] + S.b[i]);
+    const escalier = pres.every(i => S.a[i] >= (m - 1) * S.b[i] - EPS);      // chacun peut retomber à 0 après un tour complet
+    pid = S.mode = escalier ? "esc" : X >= 0.875 && X <= 1 + EPS ? "uc" : "u";
+  }
+  let score;
+  if (pid === "esc") {
+    // Agent « critique » : son a couvre tout juste un tour complet d'attente, a = (n − 1)·b. Les autres ont de la marge.
+    // delai = nombre de jours qu'un critique peut encore attendre en retombant à 0 quand on le servira.
+    const m = pres.length, C = [], H = [];
+    for (const i of pres) (S.a[i] <= (m - 1) * S.b[i] + EPS ? C : H).push(i);
+    const delai = i => Math.floor((S.a[i] - S.cur[i]) / S.b[i] + EPS);
+    // Les critiques peuvent-ils tous attendre un jour de plus ? Triés par délai, le k-ième doit avoir au moins k jours devant lui.
+    const attendre = C.map(delai).sort((x, y) => x - y).every((d, k) => d >= k + 1);
+    const pool = H.length && (!C.length || attendre) ? H : C.length ? C : H, crit = pool === C;
+    score = i => !pool.includes(i) ? -Infinity : crit ? S.cur[i] - 1e6 * delai(i) : S.cur[i];
+  } else
+  if (pid === "mix") { const w = cfg.mix.w / 100, f = SCORE[cfg.mix.p], h = SCORE[cfg.mix.q]; score = i => w * f(S, i) + (1 - w) * h(S, i); }
+  else { const f = SCORE[pid] || SCORE.u; score = i => f(S, i); }
+  let M = -Infinity; for (const i of pres) M = Math.max(M, score(i));
+  const cand = pres.filter(i => score(i) >= M - EPS);
+  if (cand.length === 1 || cfg.tie === "fixe") return cand[0];
+  if (cfg.tie === "aleatoire") return cand[Math.floor(S.rng() * cand.length)];
+  const c = cand.reduce((best, i) => ((i - S.rot + n) % n) < ((best - S.rot + n) % n) ? i : best);
+  S.rot = (c + 1) % n; return c;
+}
+function stepSim(S) {
+  const t = S.u.length, n = S.n; ensureWorld(t);
+  S.a = W.a[t]; S.b = W.b[t];
+  const pres = [];
+  let out = null;      // agents qui partent ce jour : leur frustration à la sortie, pour le tracé seulement
+  for (let i = 0; i < n; i++) {
+    if (!W.pres[t][i]) { if (S.cur[i] !== null) (out = out || {})[i] = S.cur[i]; S.cur[i] = null; }
+    else { if (S.cur[i] === null) S.cur[i] = cfg.agents[i][0]; pres.push(i); }
+  }
+  // Ressources en plus, données le matin. pre garde la valeur d'avant, pour tracer la chute verticale.
+  let pre = null, w = 0, nres = 0;
+  const donner = i => { if (!pre) pre = {}; if (!(i in pre)) pre[i] = S.cur[i];
+    const y = S.cur[i] - S.a[i]; if (cfg.floor && y < 0) { w -= y; S.cur[i] = 0; } else S.cur[i] = y; S.N[i]++; nres++; };
+  for (const i of W.boost[t]) donner(i);                                   // à la main
+  if (cfg.auto && pres.length > 1) {                                       // automatiques
+    // Critiques : a = (n − 1)·b, aucune marge. delai = jours qu'un critique peut attendre en retombant encore à 0.
+    // Ils sont « rangeables » si, triés par délai, le k-ième (k = 0, 1, …) peut attendre au moins k jours. Sinon le plus pressé reçoit un service.
+    const m = pres.length, C = pres.filter(i => S.a[i] <= (m - 1) * S.b[i] + EPS);
+    const delai = i => Math.floor((S.a[i] - S.cur[i]) / S.b[i] + EPS);
+    for (let k = 0; k < 40 && C.length; k++) {
+      if (C.map(delai).sort((x, y) => x - y).every((d, j) => d >= j)) break;
+      const i = C.reduce((b, j) => delai(j) < delai(b) || (delai(j) === delai(b) && S.cur[j] > S.cur[b] + EPS) ? j : b);
+      if (S.cur[i] <= EPS) break;                                          // rien à retirer : une ressource n'y changerait rien
+      donner(i);
+    }
+  }
+  S.u.push(S.cur.slice()); S.out.push(out); S.pre.push(pre);
+  S.lag.push(S.E.map((e, i) => e - S.N[i]));
+  for (const i of pres) { S.su[i] += S.cur[i]; S.sn[i]++; }
+  S.mu.push(S.sn.map((c, i) => c ? S.su[i] / c : null));
+  // indicateurs du jour t (état avant le service)
+  const vals = pres.map(i => S.cur[i]);
+  const marche = pres.map(i => S.b[i]).sort((x, y) => y - x).reduce((p, bb, k) => p + k * bb, 0);   // somme de l'escalier
+  const day = vals.length ? { exces: vals.reduce((p, q) => p + q, 0) - marche, max: Math.max(...vals), ecart: Math.max(...vals) - Math.min(...vals),
+    somme: vals.reduce((p, q) => p + q, 0), moy: vals.reduce((p, q) => p + q, 0) / vals.length,
+    phi: pres.reduce((p, i) => p + S.cur[i] / (S.a[i] + S.b[i]), 0) } : { max: 0, ecart: 0, somme: 0, moy: 0, phi: 0, exces: 0 };
+  let s = -1;
+  if (pres.length) {
+    s = choose(S, pres);
+    for (const i of pres) S.E[i] += S.b[i] / (S.a[i] + S.b[i]);
+    for (const i of pres) {
+      if (i === s) { const y = S.cur[i] - S.a[i]; if (cfg.floor && y < 0) { w -= y; S.cur[i] = 0; } else S.cur[i] = y; }
+      else S.cur[i] += S.b[i];
+    }
+    S.N[s]++;
+  }
+  S.served.push(s); S.waste.push(w); S.day.push(day); S.modes.push(S.pid === "ada" && pres.length ? S.mode : null);
+  const prev = t ? S.cum[t - 1] : { max: 0, ecart: 0, moy: 0, gaspi: 0, res: 0 };
+  S.cum.push({ max: prev.max + day.max, ecart: prev.ecart + day.ecart, moy: prev.moy + day.moy, gaspi: prev.gaspi + w, res: prev.res + nres });
+}
+
+let sims = [];
+let tc = 0;                 // temps continu
+function rebuild() { W = newWorld(); sims = POLS.map((p, k) => newSim(p.id, k)); ensure(Math.ceil(tc) + 2); }
+function ensure(T) { for (const S of sims) while (S.u.length <= T) stepSim(S); }
+
+/* ---------------- Tracés ---------------- */
+let playing = false, lastTs = 0, tab = "courbes", lastDay = -1;
+const yView = new Map();    // échelles verticales lissées par tracé
+
+function niceInt(r) { const c = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000]; return c.find(m => m >= r) || 1000; }
+function windowRange() {
+  if (cfg.whole) return [0, Math.max(cfg.win, tc)];
+  const x1 = Math.max(cfg.win, tc); return [x1 - cfg.win, x1];
+}
+function setupCanvas(cv) {
+  const box = cv.parentElement, dpr = window.devicePixelRatio || 1, Wd = box.clientWidth, H = box.clientHeight;
+  if (cv.width !== Math.round(Wd * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(Wd * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, Wd, H);
+  return [g, Wd, H];
+}
+
+/* series : [{ color, width, dash, value: t => nombre | null, label }] */
+function drawChart(cv, key, series, opts = {}) {
+  const [g, Wd, H] = setupCanvas(cv);
+  const ribbon = opts.ribbon ? 20 : 0;
+  const L = 40, R = opts.labels ? 26 : 12, Tp = 14, B = 26 + ribbon, pw = Wd - L - R, ph = H - Tp - B;
+  if (pw < 20 || ph < 20) return;
+  const [x0, x1] = windowRange();
+  const tEnd = tc;
+  const tA = Math.max(0, Math.floor(x0)), tB = Math.min(Math.ceil(tEnd), Math.ceil(x1));
+
+  // échelle verticale cible : entiers englobant les valeurs visibles
+  let lo = Infinity, hi = -Infinity;
+  const avant = (s, t) => { const v = s.pre ? s.pre(t) : null; return v === null ? s.value(t) : v; };     // valeur avant une éventuelle ressource du matin
+  for (const s of series) for (let t = tA; t <= tB; t++) { for (const v of [s.value(t), avant(s, t)]) if (v !== null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+  if (!isFinite(lo)) { lo = 0; hi = 1; }
+  if (opts.zero) { lo = Math.min(Math.floor(lo), 0); hi = Math.ceil(hi); }
+  else {
+    const pad = Math.max(1, Math.ceil(0.15 * (hi - lo))), pos = lo >= 0;
+    lo = Math.floor(lo - pad); hi = Math.ceil(hi + pad); if (pos) lo = Math.max(0, lo);
+  }
+  if (hi - lo < 2) hi = lo + 2;
+  let v = yView.get(key);
+  if (!v) v = { lo, hi }; else { const k = 0.18; v.lo += (lo - v.lo) * k; v.hi += (hi - v.hi) * k; if (Math.abs(v.lo - lo) < 0.01) v.lo = lo; if (Math.abs(v.hi - hi) < 0.01) v.hi = hi; }
+  yView.set(key, v);
+  const X = t => L + (t - x0) / (x1 - x0) * pw, Y = y => Tp + (1 - (y - v.lo) / (v.hi - v.lo)) * ph;
+
+  // lignes horizontales entières uniquement ; en abscisse, seulement les graduations
+  g.font = `11px ${css("--mono")}`; g.lineWidth = 1;
+  const ys = niceInt((v.hi - v.lo) / 5);
+  g.textAlign = "right"; g.textBaseline = "middle";
+  for (let y = Math.ceil(v.lo / ys) * ys; y <= v.hi + 1e-9; y += ys) {
+    g.strokeStyle = y === 0 ? css("--line") : css("--grid");
+    g.beginPath(); g.moveTo(L, Y(y)); g.lineTo(L + pw, Y(y)); g.stroke();
+    g.fillStyle = css("--muted"); g.fillText(String(y), L - 6, Y(y));
+  }
+  const xs = niceInt((x1 - x0) / Math.max(3, Math.floor(pw / 70)));
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (let t = Math.ceil(x0 / xs) * xs; t <= x1 + 1e-9; t += xs) {
+    g.fillStyle = css("--muted"); g.fillText(String(t), X(t), Tp + ph + ribbon + 7);
+  }
+
+  g.save(); g.beginPath(); g.rect(L, Tp - 2, pw, ph + 4); g.clip();
+  // événements : un trait par jour concerné, étiquettes sur trois lignes pour ne pas se chevaucher
+  const evs = [];
+  for (let d = Math.max(1, Math.ceil(x0)); d <= Math.min(x1, tEnd); d++) if (W.ev[d]) evs.push([d, W.ev[d]]);
+  g.save(); g.setLineDash([4, 4]); g.strokeStyle = css("--event"); g.fillStyle = css("--event"); g.textAlign = "left"; g.textBaseline = "top";
+  g.font = `11px ${css("--sans")}`;
+  for (const [d, e] of evs) {
+    g.beginPath(); g.moveTo(X(d), Tp); g.lineTo(X(d), Tp + ph); g.stroke();
+    if (opts.eventLabels && evs.length <= 12) g.fillText(e.lab, X(d) + 4, Tp + 2 + 13 * e.row);
+  }
+  g.restore();
+
+  // courbes : jours entiers jusqu'à floor(tc), puis interpolation jusqu'à tc
+  for (const s of series) {
+    g.strokeStyle = s.color; g.lineWidth = s.width || 1.6; g.setLineDash(s.dash || []); g.beginPath();
+    let pen = false;
+    const tLast = Math.floor(tEnd);
+    for (let t = tA; t <= tLast; t++) {
+      const y = s.value(t);
+      if (y === null) { pen = false; continue; }
+      const ya = avant(s, t);
+      if (ya !== y) { pen ? g.lineTo(X(t), Y(ya)) : g.moveTo(X(t), Y(ya)); pen = true; }
+      pen ? g.lineTo(X(t), Y(y)) : g.moveTo(X(t), Y(y)); pen = true;
+    }
+    const fr = tEnd - tLast, y0 = s.value(tLast), y1 = avant(s, tLast + 1);
+    if (fr > 0 && y0 !== null && y1 !== null && pen) g.lineTo(X(tEnd), Y(y0 + (y1 - y0) * fr));
+    g.stroke();
+  }
+  g.setLineDash([]);
+  g.restore();
+
+  // étiquettes en bout de courbe
+  if (opts.labels) {
+    g.font = `500 11px ${css("--mono")}`; g.textAlign = "left"; g.textBaseline = "middle";
+    const tLast = Math.floor(tEnd), fr = tEnd - tLast;
+    const tags = [];
+    for (const s of series) if (s.label) {
+      const y0 = s.value(tLast), y1 = avant(s, tLast + 1); if (y0 === null) continue;
+      tags.push({ s, y: Y(y1 === null ? y0 : y0 + (y1 - y0) * fr) });
+    }
+    tags.sort((p, q) => p.y - q.y);
+    for (let j = 1; j < tags.length; j++) tags[j].y = Math.max(tags[j].y, tags[j - 1].y + 11);
+    for (let j = tags.length - 1, lim = Tp + ph; j >= 0; j--) { tags[j].y = Math.min(tags[j].y, lim); lim = tags[j].y - 11; }
+    for (const { s, y } of tags) { g.fillStyle = s.color; g.fillText(s.label, Math.min(X(tEnd), L + pw) + 5, y); }
+  }
+
+  // bande des agents servis
+  if (opts.ribbon) {
+    const S = opts.ribbon, top = Tp + ph + 3, h = ribbon - 5;
+    g.save(); g.beginPath(); g.rect(L, top, Math.max(0, Math.min(X(tEnd), L + pw) - L), h); g.clip();
+    g.textAlign = "center"; g.textBaseline = "middle"; g.font = `500 10px ${css("--mono")}`;
+    for (let d = tA; d < Math.min(tEnd, x1); d++) {
+      const c = S.served[d]; if (c < 0) continue;
+      const xa = X(d), xb = X(d + 1);
+      g.fillStyle = acol(c); g.fillRect(xa + 0.5, top, xb - xa - 1, h);
+      if (xb - xa >= 11) { g.fillStyle = css("--accent-fg"); g.fillText(NAMES[c], (xa + xb) / 2, top + h / 2 + 0.5); }
+    }
+    g.restore();
+  }
+  g.strokeStyle = css("--line"); g.lineWidth = 1; g.strokeRect(L, Tp, pw, ph);
+}
+
+function drawAll() {
+  const F = sims[polIndex(cfg.focus)];
+  const series = [];
+  for (let i = 0; i < F.n; i++) series.push({ color: acol(i), width: 1.8, label: NAMES[i],
+    value: t => !F.u[t] ? null : F.u[t][i] !== null ? F.u[t][i] : F.out[t] && i in F.out[t] ? F.out[t][i] : null,
+    pre: t => F.pre[t] && i in F.pre[t] ? F.pre[t][i] : null });
+  if (cfg.mean) series.push({ color: css("--muted"), width: 1.2, dash: [3, 4], value: t => (F.day[t] ? F.day[t].moy : null) });
+  if (tab === "courbes") { drawChart($("main"), "main", series, { ribbon: F, labels: true, zero: true, eventLabels: true }); return; }
+  drawChart($("mini"), "mini", series, { ribbon: F, labels: true, zero: true });
+  const means = [];
+  for (let i = 0; i < F.n; i++) means.push({ color: acol(i), width: 1.8, label: NAMES[i], value: t => (F.mu[t] ? F.mu[t][i] : null) });
+  drawChart($("c3"), "c3", means, { labels: true, zero: true });
+  for (const [cid, mk] of [["c1", cfg.m1], ["c2", cfg.m2]]) {
+    const ser = [];
+    POLS.forEach((p, k) => { if (cfg.show.has(p.id)) ser.push({ color: pcol(k), width: p.id === cfg.focus ? 2.4 : 1.5,
+      value: t => (sims[k].day[t] ? METRICS[mk].f(sims[k], t) : null) }); });
+    drawChart($(cid), cid, ser, { zero: false });
+  }
+}
+
+/* ---------------- Horloge, tableaux, légendes ---------------- */
+function renderReadout() {
+  const T = Math.floor(tc), X = loadAt(T), L = $("load");
+  $("tnow").textContent = T;
+  L.textContent = `X = ${fracStr(X)}`;
+  L.className = "load " + (Math.abs(X - 1) < 1e-9 ? "crit" : X > 1 ? "over" : "under");
+  const nr = sims[polIndex(cfg.focus)].cum[T].res, R = $("rescount");
+  R.hidden = !(nr || cfg.auto || cfg.boosts.length); R.textContent = `ressources : ${nr}`; R.title = `Services en plus reçus depuis t = 0 avec la politique « ${POLS[polIndex(cfg.focus)].name} »`;
+  const A = $("adamode"), mode = sims[polIndex(cfg.focus)].modes[T];
+  A.hidden = cfg.focus !== "ada"; A.textContent = mode ? `applique : ${POLS[polIndex(mode)].name}` : "personne à servir";
+  L.title = Math.abs(X - 1) < 1e-9 ? "charge critique" : X > 1 ? "surcharge : la frustration totale dérive" : "sous-charge : une partie du service est perdue au plancher";
+}
+function renderTables() {
+  const T = Math.floor(tc), [x0] = windowRange(), tA = Math.max(0, Math.floor(x0)), tB = Math.max(tA, T - 1);
+
+  // par politique
+  const rows = [], cols = [["max", "max moyen"], ["ecart", "écart moyen"], ["moy", "ū moyen"], ["gaspi", "gaspillage / jour"]];
+  const avecRes = cfg.auto || cfg.boosts.length > 0;
+  if (avecRes) cols.push(["res", "ressources depuis t = 0"]);
+  POLS.forEach((p, k) => {
+    if (!cfg.show.has(p.id) && p.id !== cfg.focus) return;
+    const S = sims[k]; let m = 0, e = 0, u = 0, w = 0, c = 0;
+    for (let t = tA; t <= tB; t++) { m += S.day[t].max; e += S.day[t].ecart; u += S.day[t].moy; w += S.waste[t]; c++; }
+    rows.push({ k, p, v: { max: m / c, ecart: e / c, moy: u / c, gaspi: w / c, res: S.cum[T].res } });
+  });
+  const best = {}; for (const [key] of cols) best[key] = Math.min(...rows.map(r => r.v[key]));
+  $("poltitle").textContent = `Politiques, moyennes sur les jours ${tA} à ${tB}`;
+  $("polres").innerHTML = `<tr><th>Politique</th>${cols.map(c => `<th>${c[1]}</th>`).join("")}</tr>` +
+    rows.map(r => `<tr><td><span style="display:inline-block;width:12px;height:3px;border-radius:2px;background:${pcol(r.k)};margin-right:8px;vertical-align:middle"></span>${r.p.name}</td>` +
+      cols.map(([key]) => `<td class="${rows.length > 1 && Math.abs(r.v[key] - best[key]) < 1e-9 ? "best" : ""}">${fmt(r.v[key])}</td>`).join("") + `</tr>`).join("");
+
+  // par agent, politique affichée
+  const k = polIndex(cfg.focus), S = sims[k];
+  $("agtitle").textContent = `Agents, politique « ${POLS[k].name} », jours ${tA} à ${tB}`;
+  let html = `<tr><th>Agent</th><th>besoin x = b/c</th><th>part servie</th><th>ū</th><th>min / max</th><th>ū depuis t = 0</th><th>retard Σx − N</th></tr>`;
+  for (let i = 0; i < S.n; i++) {
+    let c = 0, s = 0, sum = 0, lo = Infinity, hi = -Infinity;
+    for (let t = tA; t <= tB; t++) { const v = S.u[t][i]; if (v === null) continue; c++; sum += v; lo = Math.min(lo, v); hi = Math.max(hi, v); if (S.served[t] === i) s++; }
+    const here = S.u[T][i] !== null, a = W.a[T][i], b = W.b[T][i];
+    html += `<tr style="${here ? "" : "opacity:.45"}"><td><span class="chip" style="background:${acol(i)};width:20px;height:20px">${NAMES[i]}</span></td>` +
+      `<td>${fracStr(b / (a + b))}</td><td>${c ? fracStr(Math.round(s / c * 1000) / 1000) : "—"}</td><td>${c ? fmt(sum / c) : "—"}</td>` +
+      `<td>${c ? `${fmt(lo)} / ${fmt(hi)}` : "—"}</td><td>${fmt(S.mu[T][i])}</td><td>${fmt(S.lag[T][i])}</td></tr>`;
+  }
+  $("agres").innerHTML = html;
+}
+function renderLegends() {
+  const P = POLS[polIndex(cfg.focus)], n = cfg.agents.length;
+  $("maintitle").textContent = `Frustrations, politique « ${P.name} »`;
+  $("minititle").textContent = `Frustrations, politique « ${P.name} »`;
+  $("c3title").textContent = `Moyenne par agent depuis t = 0, politique « ${P.name} »`;
+  $("legend").innerHTML = Array.from({ length: n }, (_, i) => `<span><i style="background:${acol(i)}"></i>u<sub>${NAMES[i]}</sub></span>`).join("") +
+    (cfg.mean ? `<span><i class="dash"></i>ū</span>` : "");
+}
+function renderChips() {
+  $("chips").innerHTML = POLS.map((p, k) => `<button type="button" class="pchip" data-pol="${p.id}" aria-pressed="${cfg.show.has(p.id)}"><i style="background:${pcol(k)}"></i>${p.name}</button>`).join("");
+}
+
+function render(snap) {
+  if (snap) yView.clear();
+  ensure(Math.ceil(tc) + 2);
+  drawAll();
+  const T = Math.floor(tc);
+  if (snap || T !== lastDay) { lastDay = T; renderReadout(); if (tab === "stats") renderTables(); }
+}
+
+/* ---------------- Éditeurs ---------------- */
+function renderAgents() {
+  const dates = cfg.pres.mode === "dates", keys = dates ? [0, 1, 2, 3, 4] : [0, 1, 2];
+  const heads = ["u(0)", "a", "b", "arrive", "part"], aria = ["u(0)", "a", "b", "arrivée", "départ"];
+  $("agentshead").innerHTML = `<th></th>` + keys.map(k => `<th>${heads[k]}</th>`).join("") + `<th></th>`;
+  const tb = $("agents"); tb.innerHTML = "";
+  cfg.agents.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    const cell = k => `<td><input type="number" id="ag-${i}-${k}" step="1" ${k === 0 ? "" : `min="${k === 3 ? 0 : 1}"`} value="${r[k] === null ? "" : r[k]}" aria-label="${aria[k]} de ${NAMES[i]}" ${k === 4 ? 'placeholder="—"' : ""}></td>`;
+    tr.innerHTML = `<td><span class="chip" style="background:${acol(i)}">${NAMES[i]}</span></td>` + keys.map(cell).join("") +
+      `<td>${cfg.agents.length > 1 ? `<button class="x" type="button" data-del="${i}" aria-label="Retirer ${NAMES[i]}">×</button>` : ""}</td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => {
+    const [, i, k] = inp.id.split("-").map(Number);
+    let v = inp.value.trim() === "" ? null : parseFloat(inp.value);
+    if (k === 4) { if (v !== null && (!isFinite(v) || v <= cfg.agents[i][3])) v = null; }
+    else { if (v === null || !isFinite(v)) v = k === 0 || k === 3 ? 0 : 1; if ((k === 1 || k === 2) && v <= 0) v = 1; if (k === 3) v = Math.max(0, Math.round(v)); }
+    if (k === 4 && v !== null) v = Math.round(v);
+    cfg.agents[i][k] = v; inp.value = v === null ? "" : v; restart();
+  }));
+  tb.querySelectorAll("[data-del]").forEach(bt => bt.addEventListener("click", () => {
+    const i = +bt.dataset.del; cfg.agents.splice(i, 1);
+    cfg.changes = cfg.changes.filter(c => c[1] !== i).map(c => [c[0], c[1] > i ? c[1] - 1 : c[1], c[2], c[3]]);
+    cfg.boosts = cfg.boosts.filter(c => c[1] !== i).map(c => [c[0], c[1] > i ? c[1] - 1 : c[1]]);
+    renderAgents(); renderChanges(); renderBoosts(); syncDyn(); restart();
+  }));
+  $("addagent").disabled = cfg.agents.length >= 8;
+  $("sum-agents").textContent = cfg.agents.length;
+}
+function renderChanges() {
+  const tb = $("changes"); tb.innerHTML = "";
+  if (!cfg.changes.length) { tb.innerHTML = `<tr><td colspan="5" class="hint">Aucun changement.</td></tr>`; return; }
+  cfg.changes.forEach((c, j) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><input type="number" id="ch-${j}-0" min="1" step="1" value="${c[0]}" aria-label="jour"></td>` +
+      `<td><select id="ch-${j}-1" aria-label="agent">${cfg.agents.map((_, i) => `<option value="${i}" ${i === c[1] ? "selected" : ""}>${NAMES[i]}</option>`).join("")}</select></td>` +
+      `<td><input type="number" id="ch-${j}-2" min="1" step="1" value="${c[2]}" aria-label="nouveau a"></td>` +
+      `<td><input type="number" id="ch-${j}-3" min="1" step="1" value="${c[3]}" aria-label="nouveau b"></td>` +
+      `<td><button class="x" type="button" data-cdel="${j}" aria-label="Retirer ce changement">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll("input, select").forEach(el => el.addEventListener("change", () => {
+    const [, j, k] = el.id.split("-").map(Number); let v = parseFloat(el.value);
+    if (!isFinite(v)) v = 1; if (k === 0) v = Math.max(1, Math.round(v)); if (k >= 2 && v <= 0) v = 1;
+    cfg.changes[j][k] = v; el.value = v; restart();
+  }));
+  tb.querySelectorAll("[data-cdel]").forEach(bt => bt.addEventListener("click", () => { cfg.changes.splice(+bt.dataset.cdel, 1); renderChanges(); syncDyn(); restart(); }));
+}
+function renderBoosts() {
+  const tb = $("boosts"); tb.innerHTML = "";
+  if (!cfg.boosts.length) { tb.innerHTML = `<tr><td colspan="3" class="hint">Aucune.</td></tr>`; return; }
+  cfg.boosts.forEach((c, j) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><input type="number" id="bo-${j}-0" min="0" step="1" value="${c[0]}" aria-label="jour"></td>` +
+      `<td><select id="bo-${j}-1" aria-label="agent">${cfg.agents.map((_, i) => `<option value="${i}" ${i === c[1] ? "selected" : ""}>${NAMES[i]}</option>`).join("")}</select></td>` +
+      `<td><button class="x" type="button" data-bdel="${j}" aria-label="Retirer cette ressource">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll("input, select").forEach(el => el.addEventListener("change", () => {
+    const [, j, k] = el.id.split("-").map(Number); let v = Math.round(parseFloat(el.value));
+    if (!isFinite(v) || v < 0) v = 0;
+    cfg.boosts[j][k] = v; el.value = v; restart();
+  }));
+  tb.querySelectorAll("[data-bdel]").forEach(bt => bt.addEventListener("click", () => { cfg.boosts.splice(+bt.dataset.bdel, 1); renderBoosts(); syncDyn(); restart(); }));
+}
+const segSet = (id, v) => $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v));
+
+/* Arrivées et départs, pas a et b, options : met l'interface en accord avec cfg */
+function syncDyn() {
+  const P = cfg.pres, Q = cfg.pas, rnd = P.mode === "hasard", rndQ = Q.mode === "hasard";
+  segSet("presmode", P.mode); segSet("pasmode", Q.mode); segSet("tie", cfg.tie);
+  $("presparams").hidden = P.mode === "dates";
+  $("pon").value = P.on; $("poff").value = P.off;
+  $("ponlab").textContent = rnd ? "séjour moyen" : "présent";
+  $("pofflab").textContent = rnd ? "absence moyenne" : "absent";
+  $("preshint").textContent = PRES_HINTS[P.mode];
+  $("sum-pres").textContent = { dates: "dates", cycle: `cycle ${P.on} + ${P.off} j`, hasard: "hasard" }[P.mode];
+  $("pasfixe").hidden = Q.mode !== "fixe"; $("pasparams").hidden = Q.mode === "fixe";
+  $("pev").value = Q.every; $("pamp").value = Q.amp;
+  $("pevlab").textContent = rndQ ? "en moyenne tous les" : "tous les";
+  $("pashint").textContent = PAS_HINTS[Q.mode]; $("pashint").hidden = Q.mode === "fixe";
+  $("sum-pas").textContent = { fixe: cfg.changes.length ? `${cfg.changes.length} changement${cfg.changes.length > 1 ? "s" : ""}` : "fixes",
+    cycle: `cycle ${Q.every} j`, hasard: "hasard" }[Q.mode];
+  $("sum-boost").textContent = [cfg.auto ? "auto" : "", cfg.boosts.length ? `${cfg.boosts.length} à la main` : ""].filter(Boolean).join(" + ") || "aucune";
+  $("tiehint").textContent = TIE_HINTS[cfg.tie];
+  $("sum-opts").textContent = cfg.floor ? "plancher" : "sans plancher";
+  $("reroll").hidden = !(rnd || rndQ || cfg.tie === "aleatoire");
+}
+/* Politique affichée, mot imposé, mélange */
+function syncPolicy() {
+  const P = POLS[polIndex(cfg.focus)], M = cfg.mix, w = M.w / 100;
+  $("focus").value = cfg.focus; $("focus2").value = cfg.focus;
+  $("motbox").hidden = !(cfg.focus === "mot" || cfg.show.has("mot"));
+  $("mixbox").hidden = !(cfg.focus === "mix" || cfg.show.has("mix"));
+  $("mixp").value = M.p; $("mixq").value = M.q; $("mixw").value = M.w;
+  const ex = id => POLS[polIndex(id)].expr;
+  const mixlaw = `argmax ${fmt(w)} · (${ex(M.p)}) + ${fmt(1 - w)} · (${ex(M.q)})`;
+  $("mixhint").textContent = mixlaw;
+  $("focuslaw").textContent = cfg.focus === "mix" ? "" : cfg.focus === "mot" ? "" : P.law;
+  $("focuslaw").hidden = !$("focuslaw").textContent;
+}
+function setFocus(id) { cfg.focus = id; syncPolicy(); renderLegends(); render(true); }
+
+/* ---------------- Animation ---------------- */
+function frame(ts) {
+  if (!playing) return;
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.1, (ts - lastTs) / 1000); lastTs = ts;
+  tc += dt * cfg.speed;
+  render(false);
+  requestAnimationFrame(frame);
+}
+function setPlaying(p) {
+  playing = p; $("play").textContent = p ? "Pause" : "Lancer";
+  if (p) { lastTs = 0; requestAnimationFrame(frame); }
+}
+function restart() { rebuild(); renderLegends(); render(true); }
+function setTab(t) {
+  tab = t;
+  for (const k of ["courbes", "stats"]) { $("v-" + k).hidden = k !== t; $("tab-" + k).setAttribute("aria-selected", k === t); }
+  render(true);
+}
+
+function loadPreset(key) {
+  const P = PRESETS[key];
+  cfg.agents = P.agents.map(r => r.slice()); cfg.changes = P.changes.map(r => r.slice());
+  cfg.boosts = (P.boosts || []).map(r => r.slice());
+  cfg.auto = !!P.auto; $("auto").checked = cfg.auto;
+  cfg.pres = { mode: "dates", on: 20, off: 10, ...(P.pres || {}) };
+  cfg.pas = { mode: "fixe", every: 10, amp: 2, ...(P.pas || {}) };
+  cfg.seed = 1;
+  cfg.floor = P.floor; $("floor").checked = P.floor;
+  cfg.tie = P.tie;
+  if (P.word) { cfg.word = P.word; $("word").value = P.word; }
+  if (P.m2) { cfg.m2 = P.m2; $("m2").value = P.m2; }
+  cfg.show = new Set(P.show); cfg.focus = P.focus;
+  $("presethint").textContent = P.hint;
+  $("f-pres").open = cfg.pres.mode !== "dates";
+  $("f-pas").open = cfg.pas.mode !== "fixe" || cfg.changes.length > 0;
+  $("f-boost").open = cfg.boosts.length > 0 || cfg.auto;
+  tc = 0; renderAgents(); renderChanges(); renderBoosts(); syncDyn(); syncPolicy(); renderChips(); rebuild(); renderLegends(); render(true);
+}
+
+/* ---------------- Branchements ---------------- */
+$("preset").innerHTML = PRESET_GROUPS.map((g, gi) => `<optgroup label="${g}">` +
+  Object.entries(PRESETS).filter(([, p]) => p.g === gi).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join("") + `</optgroup>`).join("");
+$("preset").addEventListener("change", e => loadPreset(e.target.value));
+
+const polOptions = POLS.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+$("focus").innerHTML = polOptions; $("focus2").innerHTML = polOptions;
+$("focus").addEventListener("change", e => setFocus(e.target.value));
+$("focus2").addEventListener("change", e => setFocus(e.target.value));
+const scoreOptions = POLS.filter(p => p.expr).map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+$("mixp").innerHTML = scoreOptions; $("mixq").innerHTML = scoreOptions;
+$("mixp").addEventListener("change", e => { cfg.mix.p = e.target.value; syncPolicy(); restart(); });
+$("mixq").addEventListener("change", e => { cfg.mix.q = e.target.value; syncPolicy(); restart(); });
+$("mixw").addEventListener("input", e => { cfg.mix.w = +e.target.value; syncPolicy(); restart(); });
+$("word").addEventListener("change", e => { cfg.word = e.target.value; restart(); });
+$("chips").addEventListener("click", e => {
+  const b = e.target.closest("[data-pol]"); if (!b) return;
+  const id = b.dataset.pol; cfg.show.has(id) ? cfg.show.delete(id) : cfg.show.add(id);
+  renderChips(); syncPolicy(); render(true);
+});
+
+for (const [id, g] of [["m1", 1], ["m2", 2]]) $(id).innerHTML = Object.entries(METRICS).filter(([, m]) => m.g === g).map(([k, m]) => `<option value="${k}">${m.name}</option>`).join("");
+$("m1").value = cfg.m1; $("m2").value = cfg.m2;
+$("m1").addEventListener("change", e => { cfg.m1 = e.target.value; yView.delete("c1"); render(); });
+$("m2").addEventListener("change", e => { cfg.m2 = e.target.value; yView.delete("c2"); render(); });
+
+const segClick = (id, fn) => $(id).addEventListener("click", e => { const b = e.target.closest("button"); if (b) fn(b.dataset.v); });
+segClick("presmode", v => { cfg.pres.mode = v; renderAgents(); syncDyn(); restart(); });
+segClick("pasmode", v => { cfg.pas.mode = v; syncDyn(); restart(); });
+segClick("tie", v => { cfg.tie = v; syncDyn(); restart(); });
+const numInput = (id, obj, key) => $(id).addEventListener("change", e => {
+  let v = Math.round(parseFloat(e.target.value)); if (!isFinite(v) || v < 1) v = 1;
+  obj()[key] = v; syncDyn(); restart();
+});
+numInput("pon", () => cfg.pres, "on"); numInput("poff", () => cfg.pres, "off");
+numInput("pev", () => cfg.pas, "every"); numInput("pamp", () => cfg.pas, "amp");
+$("reroll").addEventListener("click", () => { cfg.seed++; restart(); });
+
+$("floor").addEventListener("change", e => { cfg.floor = e.target.checked; syncDyn(); restart(); });
+$("mean").addEventListener("change", e => { cfg.mean = e.target.checked; renderLegends(); render(); });
+$("whole").addEventListener("change", e => { cfg.whole = e.target.checked; render(true); });
+$("win").addEventListener("input", e => { cfg.win = +e.target.value; $("winval").textContent = cfg.win; render(true); });
+$("speed").addEventListener("input", e => { cfg.speed = +e.target.value; $("speedval").textContent = String(cfg.speed).replace(".", ","); });
+$("play").addEventListener("click", () => setPlaying(!playing));
+$("step").addEventListener("click", () => { setPlaying(false); tc = Math.floor(tc) + 1; render(); });
+$("reset").addEventListener("click", () => { tc = 0; render(true); });
+$("tab-courbes").addEventListener("click", () => setTab("courbes"));
+$("tab-stats").addEventListener("click", () => setTab("stats"));
+$("addagent").addEventListener("click", () => {
+  if (cfg.agents.length >= 8) return;
+  cfg.agents.push([0, 2, 1, cfg.pres.mode === "dates" ? Math.floor(tc) + 1 : 0, null]); renderAgents(); renderChanges(); renderBoosts(); restart();
+});
+$("auto").addEventListener("change", e => { cfg.auto = e.target.checked; syncDyn(); restart(); });
+$("addboost").addEventListener("click", () => { cfg.boosts.push([Math.floor(tc) + 5, 0]); renderBoosts(); syncDyn(); restart(); });
+$("addchange").addEventListener("click", () => { cfg.changes.push([Math.floor(tc) + 5, 0, 2, 1]); renderChanges(); syncDyn(); restart(); });
+
+const ro = new ResizeObserver(() => render(true));
+ro.observe($("main").parentElement); ro.observe($("v-stats"));
+const redraw = () => { cssCache.clear(); renderAgents(); renderChips(); renderLegends(); render(true); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render(true));
+
+// Départ : le scénario avec arrivée, déjà déroulé jusqu'au jour 26 (E arrive au jour 30), lecture à 0,5 jour par seconde
+$("preset").value = "arrivee"; loadPreset("arrivee");
+tc = 26; render(true);
+setPlaying(!matchMedia("(prefers-reduced-motion: reduce)").matches);
+</script>
+</body>
+</html>
