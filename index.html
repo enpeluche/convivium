@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lucas Noirot · Convivium</title>
+<meta name="description" content="Outils interactifs qui accompagnent ma thèse sur le partage équitable : le simulateur de frustration et la carte de l'équité.">
+<meta name="author" content="Lucas Noirot">
+<link rel="icon" href="simulateur/assets/favicon.ico">
+<style>
+/* =============================================================================
+   Page d'accueil. Direction artistique reprise de enpeluche.github.io :
+   Inter, texte prune #271a38, accent violet #7451eb, bordures #dad9dc,
+   logo étoile qui tourne au survol, « BONJOUR, JE SUIS » en capitales violettes.
+   La police, le logo et l'icône sont pris dans simulateur/assets/.
+   ============================================================================= */
+@font-face {
+  font-family: "InterVariable";
+  src: url("simulateur/assets/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+:root {
+  --font: InterVariable, Inter, system-ui, sans-serif;
+  --bg: #f7f6fa; --panel: #ffffff; --fg: #271a38; --muted: #6c6479;
+  --line: #dad9dc; --grid: #eeedf2;
+  --accent: #7451eb; --accent-soft: rgba(116, 81, 235, 0.12);
+  --shadow: 0 4px 15px rgba(39, 26, 56, 0.07);
+  --shadow-hover: 0 12px 32px rgba(116, 81, 235, 0.18);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141019; --panel: #1d1724; --fg: #ece8f5; --muted: #a49cb3;
+    --line: #342c40; --grid: #261f2f;
+    --accent: #9d85ff; --accent-soft: rgba(157, 133, 255, 0.16);
+    --shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01";
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- En-tête ---------- */
+.top {
+  display: flex; align-items: center; gap: 12px; padding: 0 20px; min-height: 60px;
+  background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand img { width: 34px; height: 34px; transition: transform .6s ease; }
+.brand:hover img { transform: rotate(45deg); }
+.brand b { font-weight: 650; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.iconlink { display: inline-flex; padding: 6px; border-radius: 8px; color: var(--fg); }
+.iconlink svg { width: 20px; height: 20px; fill: currentColor; }
+.iconlink:hover { color: var(--accent); background: var(--accent-soft); }
+
+.langtoggle { position: relative; display: inline-flex; margin-left: 6px; background: var(--grid); border-radius: 999px; padding: 2px; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.08); }
+.langtoggle button { position: relative; z-index: 1; width: 38px; height: 26px; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; border-radius: 999px; }
+.langtoggle button[aria-pressed="true"] { color: var(--fg); }
+.langtoggle i { position: absolute; top: 2px; left: 2px; width: 38px; height: 26px; border-radius: 999px; background: var(--panel); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: transform .3s cubic-bezier(.4, 0, .2, 1); }
+.langtoggle.en i { transform: translateX(38px); }
+
+/* ---------- Présentation ---------- */
+main { flex: 1; width: 100%; max-width: 980px; margin: 0 auto; padding: 0 16px; }
+.hero { text-align: center; padding: clamp(40px, 9vh, 88px) 0 clamp(28px, 6vh, 56px); }
+.hero .star { width: 76px; height: 76px; transition: transform .8s ease; }
+.hero .star:hover { transform: rotate(180deg); }
+.hello { margin: 18px 0 0; font-size: clamp(1rem, 3vw, 1.35rem); color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+h1 { margin: 0; font-size: clamp(2.6rem, 9vw, 4.8rem); line-height: 1.1; font-weight: 750; letter-spacing: -0.02em; }
+.role { margin: 10px 0 0; font-size: 1.05rem; color: var(--muted); font-weight: 500; }
+.intro { max-width: 640px; margin: 22px auto 0; font-size: 1.05rem; }
+
+/* ---------- Outils ---------- */
+.label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 650; margin: 0 0 14px; text-align: center; }
+.tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.tool {
+  display: flex; flex-direction: column; gap: 14px; padding: 22px; text-decoration: none;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.tool:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--accent); }
+.tool figure { margin: 0; height: 120px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+.tool figure svg { width: 100%; height: 100%; }
+.tool h2 { margin: 0; font-size: 1.3rem; font-weight: 650; }
+.tool p { margin: 0; color: var(--muted); flex: 1; }
+.tool .go { color: var(--accent); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.tool .go svg { width: 18px; height: 18px; fill: currentColor; transition: transform .2s ease; }
+.tool:hover .go svg { transform: translateX(4px); }
+
+/* illustrations */
+.ill .ax { stroke: var(--line); stroke-width: 1.5; fill: none; }
+.ill .c0 { stroke: #7451eb; } .ill .c1 { stroke: #e0565b; } .ill .c2 { stroke: #1a9e8f; }
+.ill .curve { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.ill .edge { stroke: var(--muted); stroke-width: 1.5; fill: none; opacity: .7; }
+.ill .node { fill: var(--panel); stroke: var(--accent); stroke-width: 2; }
+.ill .node.hl { fill: var(--accent); }
+.ill text { font: 600 10px var(--font); fill: var(--fg); text-anchor: middle; dominant-baseline: central; }
+.ill .node.hl + text { fill: #fff; }
+@media (prefers-color-scheme: dark) {
+  .ill .c0 { stroke: #9d85ff; } .ill .c1 { stroke: #ff7a7f; } .ill .c2 { stroke: #3cc8b6; }
+  .ill .node.hl + text { fill: #140f1f; }
+}
+
+/* ---------- Liens ---------- */
+.find { margin: clamp(40px, 8vh, 72px) 0 0; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.links a {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; text-decoration: none;
+  background: var(--panel); border: 1px solid var(--line); font-weight: 550; font-size: 0.95rem;
+  transition: border-color .15s, box-shadow .15s, color .15s;
+}
+.links a:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.links svg { width: 18px; height: 18px; fill: currentColor; }
+.links a.main { background: var(--accent); border-color: var(--accent); color: #fff; }
+.links a.main:hover { color: #fff; }
+@media (prefers-color-scheme: dark) { .links a.main, .links a.main:hover { color: #140f1f; } }
+
+footer { margin-top: clamp(40px, 8vh, 72px); padding: 20px 16px; text-align: center; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); }
+
+@media (max-width: 520px) {
+  .top { padding: 0 16px; }
+  .brand b { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="https://enpeluche.github.io" title="enpeluche.github.io">
+    <img src="simulateur/assets/logo.png" alt="" width="34" height="34">
+    <b>Lucas Noirot</b>
+  </a>
+  <div class="top-right">
+    <a class="iconlink" href="https://github.com/enpeluche/convivium" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24"><path data-icon="github"/></svg></a>
+    <a class="iconlink" href="https://linkedin.com/in/enpeluche" target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path data-icon="linkedin"/></svg></a>
+    <span class="langtoggle" role="group" aria-label="Langue / Language">
+      <button type="button" data-lang="fr" lang="fr">FR</button><button type="button" data-lang="en" lang="en">EN</button><i aria-hidden="true"></i>
+    </span>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <img class="star" src="simulateur/assets/logo.png" alt="" width="76" height="76">
+    <p class="hello" data-i18n="hello">Bonjour, je suis</p>
+    <h1>Lucas Noirot</h1>
+    <p class="role" data-i18n="role">Doctorant · Partage équitable</p>
+    <p class="intro" data-i18n="intro">Ma thèse porte sur le partage d'une ressource entre plusieurs agents : qui servir, et à quel prix pour l'équité. Voici les outils interactifs qui l'accompagnent. Ils marchent dans le navigateur, sans installation, en français et en anglais.</p>
+  </section>
+
+  <h2 class="label" data-i18n="tools">Outils interactifs</h2>
+  <section class="tools">
+    <a class="tool" href="simulateur/" data-target="simulateur/">
+      <figure class="ill" aria-hidden="true">
+        <svg viewBox="0 0 280 120" preserveAspectRatio="xMidYMid meet">
+          <path class="ax" d="M20 104H264M20 104V14"/>
+          <path class="curve c0" d="M20 96 L50 72 L62 92 L96 66 L108 90 L142 62 L154 88 L188 60 L200 86 L234 58 L246 84 L262 72"/>
+          <path class="curve c1" d="M20 100 L44 88 L56 98 L84 84 L96 96 L124 82 L136 94 L164 80 L176 92 L204 78 L216 90 L244 76 L262 86"/>
+          <path class="curve c2" d="M20 92 L36 60 L46 82 L70 40 L80 74 L112 30 L122 70 L156 26 L166 66 L200 24 L210 64 L246 22 L256 62"/>
+        </svg>
+      </figure>
+      <h2 data-i18n="sim_title">Simulateur de frustration</h2>
+      <p data-i18n="sim_text">Des agents partagent une ressource et l'on sert, à chaque instant, celui dont la frustration normalisée u/λ est la plus grande. On règle les besoins, on lance la simulation et l'on observe ce qui se passe en abondance, à l'équilibre et en famine.</p>
+      <span class="go"><span data-i18n="open">Ouvrir</span><svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></span>
+    </a>
+
+    <a class="tool" href="carte-equite/" data-target="carte-equite/">
+      <figure class="ill" aria-hidden="true">
+        <svg viewBox="0 0 280 120" preserveAspectRatio="xMidYMid meet">
+          <path class="edge" d="M140 22L84 60M140 22L196 60M84 60L56 98M84 60L120 98M196 60L160 98M196 60L224 98M120 98L160 98"/>
+          <circle class="node hl" cx="140" cy="22" r="17"/><text x="140" y="22">EF</text>
+          <circle class="node" cx="84" cy="60" r="17"/><text x="84" y="60">EFX</text>
+          <circle class="node" cx="196" cy="60" r="17"/><text x="196" y="60">MMS</text>
+          <circle class="node" cx="56" cy="98" r="17"/><text x="56" y="98">EF1</text>
+          <circle class="node" cx="120" cy="98" r="17"/><text x="120" y="98">PROP</text>
+          <circle class="node" cx="160" cy="98" r="17"/><text x="160" y="98">PO</text>
+          <circle class="node" cx="224" cy="98" r="17"/><text x="224" y="98">α</text>
+        </svg>
+      </figure>
+      <h2 data-i18n="map_title">Carte de l'équité</h2>
+      <p data-i18n="map_text">Les notions d'équité pour le partage de biens indivisibles, reliées entre elles : définitions, implications avec leurs preuves pas à pas, contre-exemples, échelles d'approximation et algorithmes animés.</p>
+      <span class="go"><span data-i18n="open">Ouvrir</span><svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></span>
+    </a>
+  </section>
+
+  <section class="find">
+    <h2 class="label" data-i18n="find">Me retrouver</h2>
+    <div class="links">
+      <a class="main" href="https://enpeluche.github.io"><svg viewBox="0 0 24 24"><path data-icon="globe"/></svg><span data-i18n="site">Mon site : enpeluche.github.io</span></a>
+      <a href="https://github.com/enpeluche" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path data-icon="github"/></svg>GitHub</a>
+      <a href="https://linkedin.com/in/enpeluche" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path data-icon="linkedin"/></svg>LinkedIn</a>
+      <a href="mailto:lucas.noirot-petit@proton.me"><svg viewBox="0 0 24 24"><path data-icon="email"/></svg>Email</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span data-i18n="footer">Code source sur GitHub</span> · <a href="https://github.com/enpeluche/convivium">enpeluche/convivium</a>
+</footer>
+
+<script>
+"use strict";
+const ICONS = {
+  github: "M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z",
+  linkedin: "M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z",
+  email: "M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z",
+  globe: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.93 6h-2.95a15.6 15.6 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.93 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14a8.2 8.2 0 0 1 0-4h3.38a16.5 16.5 0 0 0 0 4H4.26zm.81 2h2.95c.32 1.25.78 2.45 1.38 3.56A7.99 7.99 0 0 1 5.07 16zm2.95-8H5.07a7.99 7.99 0 0 1 4.33-3.56A15.6 15.6 0 0 0 8.02 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66a14.7 14.7 0 0 1 0-4h4.68a14.7 14.7 0 0 1 0 4zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56zM16.36 14a16.5 16.5 0 0 0 0-4h3.38a8.2 8.2 0 0 1 0 4h-3.38z",
+};
+document.querySelectorAll("path[data-icon]").forEach(p => p.setAttribute("d", ICONS[p.dataset.icon]));
+
+const TEXTS = {
+  fr: {
+    title: "Lucas Noirot · Convivium",
+    hello: "Bonjour, je suis",
+    role: "Doctorant · Partage équitable",
+    intro: "Ma thèse porte sur le partage d'une ressource entre plusieurs agents : qui servir, et à quel prix pour l'équité. Voici les outils interactifs qui l'accompagnent. Ils marchent dans le navigateur, sans installation, en français et en anglais.",
+    tools: "Outils interactifs",
+    sim_title: "Simulateur de frustration",
+    sim_text: "Des agents partagent une ressource et l'on sert, à chaque instant, celui dont la frustration normalisée u/λ est la plus grande. On règle les besoins, on lance la simulation et l'on observe ce qui se passe en abondance, à l'équilibre et en famine.",
+    map_title: "Carte de l'équité",
+    map_text: "Les notions d'équité pour le partage de biens indivisibles, reliées entre elles : définitions, implications avec leurs preuves pas à pas, contre-exemples, échelles d'approximation et algorithmes animés.",
+    open: "Ouvrir",
+    find: "Me retrouver",
+    site: "Mon site : enpeluche.github.io",
+    footer: "Code source sur GitHub",
+  },
+  en: {
+    title: "Lucas Noirot · Convivium",
+    hello: "Hello, I am",
+    role: "PhD student · Fair division",
+    intro: "My PhD is about sharing a resource among several agents: whom to serve, and at what cost for fairness. Here are the interactive tools that go with it. They run in the browser, with nothing to install, in French and English.",
+    tools: "Interactive tools",
+    sim_title: "Frustration simulator",
+    sim_text: "Agents share one resource, and at each step the agent with the largest normalised frustration u/λ is served. Set the needs, run the simulation and watch what happens in abundance, at balance and under scarcity.",
+    map_title: "Fairness map",
+    map_text: "Fairness notions for dividing indivisible goods, linked together: definitions, implications with step-by-step proofs, counterexamples, approximation ladders and animated algorithms.",
+    open: "Open",
+    find: "Find me",
+    site: "My website: enpeluche.github.io",
+    footer: "Source code on GitHub",
+  },
+};
+
+const STORE = "convivium-langue";
+function initialLang() {
+  const q = new URLSearchParams(location.search).get("lang");
+  if (q === "fr" || q === "en") return q;
+  try { const s = localStorage.getItem(STORE); if (s === "fr" || s === "en") return s; } catch (e) { /* stockage indisponible */ }
+  return (navigator.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "en";
+}
+function setLang(lang) {
+  const T = TEXTS[lang];
+  document.documentElement.lang = lang;
+  document.title = T.title;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T[el.dataset.i18n]; });
+  document.querySelectorAll("[data-target]").forEach(a => { a.href = a.dataset.target + "?lang=" + lang; });
+  document.querySelectorAll(".langtoggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  document.querySelector(".langtoggle").classList.toggle("en", lang === "en");
+  try { localStorage.setItem(STORE, lang); } catch (e) { /* stockage indisponible */ }
+}
+document.querySelectorAll(".langtoggle button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+setLang(initialLang());
+</script>
+</body>
+</html>
