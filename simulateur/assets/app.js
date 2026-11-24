@@ -712,6 +712,8 @@ function wire() {
   const m = location.hash.match(/^#s=([\w-]+)/);
   if (m) { try { ok = restore(JSON.parse(b64d(m[1]))); } catch (e) { ok = false; } history.replaceState(null, "", location.pathname + location.search); }
   if (!ok) { try { ok = restore(JSON.parse(localStorage.getItem(STORE))); } catch (e) { ok = false; } tc = 0; }
+  const qlang = new URLSearchParams(location.search).get("lang");   // ?lang=fr|en l'emporte (lien depuis l'accueil)
+  if (qlang === "fr" || qlang === "en") state.lang = qlang;
   if (!ok) { const P = PRESETS.eq5; state.cfg = { agents: P.agents.map(([u0, lam, sig]) => ({ u0, lam, sig })), chi: "prio", prio: P.agents.map((_, i) => i), seed: 1 }; }
 
   wire();
