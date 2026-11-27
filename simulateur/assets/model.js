@@ -12,6 +12,10 @@
               l'agent choisi lors de la dernière égalité ;
      "random" tirage au sort (graine fixée, donc reproductible).
    La comparaison u_i/λ_i > u_j/λ_j se fait en entiers (u_i·λ_j > u_j·λ_i) : aucune erreur d'arrondi.
+
+   Augmentation de ressource : un apport ponctuel { agent i, instant t, quantité q } donne, une seule fois,
+   σ_i := σ_i + q à l'instant t. Si i est servi en t : u_i(t+1) = max(0, u_i(t) + λ_i − σ_i − q) ;
+   sinon l'apport lui revient quand même : u_i(t+1) = max(0, u_i(t) + λ_i − q). Ce qui passe sous 0 est gaspillé.
    ============================================================================= */
 "use strict";
 
@@ -83,6 +87,14 @@ const Model = (() => {
       this.rank = new Int32Array(n); prio.forEach((i, r) => { this.rank[i] = r; });
       this.rot = 0;                                   // tourniquet : premier candidat à la prochaine égalité
       this.rng = mulberry(9001 + 7919 * (cfg.seed || 1));
+      // apports ponctuels : instant t → Float64Array(n) des quantités (cumulées si plusieurs)
+      this.boost = new Map(); this.lastBoost = -1;
+      for (const b of cfg.boosts || []) {
+        if (!(b.agent >= 0 && b.agent < n && b.t >= 0 && b.q > 0)) continue;
+        if (!this.boost.has(b.t)) this.boost.set(b.t, new Float64Array(n));
+        this.boost.get(b.t)[b.agent] += b.q;
+        if (b.t > this.lastBoost) this.lastBoost = b.t;
+      }
       this.len = 0; this.cap = 0;
       this.alloc(1024);
       cfg.agents.forEach((a, i) => { this._u[i] = a.u0; });
@@ -106,6 +118,7 @@ const Model = (() => {
     served(t) { return t < this.len ? this._s[t] : null; }
     ties(t) { return t < this.len ? this._t[t] : 0; }
     waste(t) { return t < this.len ? this._g[t] : null; }
+    boostAt(t) { return this.boost.get(t) || null; }                                         // apports en t, ou null
 
     /* Grandeurs dérivées */
     y(t, i) { return t >= 1 && t <= this.len ? this.Nc(t, i) / t : null; }                   // part reçue
@@ -135,15 +148,16 @@ const Model = (() => {
       if (t + 1 >= this.cap) this.alloc(this.cap * 2);
       const o = t * n, p = o + n, u = this._u;
       const [k, nt] = this.choose(o);
+      const B = this.boost.get(t);
       let waste = 0;
       for (let i = 0; i < n; i++) {
-        let v;
-        if (i === k) { v = u[o + i] + this.lam[i] - this.sig[i]; if (v < 0) { waste = -v; v = 0; } }
-        else v = u[o + i] + this.lam[i];
-        u[p + i] = v;
+        const q = B ? B[i] : 0;
+        let v = u[o + i] + this.lam[i] - (i === k ? this.sig[i] : 0) - q, w = 0;
+        if (v < 0 && (i === k || q > 0)) { w = -v; v = 0; }
+        u[p + i] = v; waste += w;
         this._N[p + i] = this._N[o + i] + (i === k ? 1 : 0);
         this._SU[p + i] = this._SU[o + i] + u[o + i];
-        this._GA[p + i] = this._GA[o + i] + (i === k ? waste / this.sig[i] : 0);
+        this._GA[p + i] = this._GA[o + i] + w / this.sig[i];
       }
       this._s[t] = k; this._g[t] = waste; this._t[t] = nt;
       this.len = t + 1;
@@ -154,14 +168,15 @@ const Model = (() => {
   /**
    * Régime asymptotique : avec χ déterministe, l'état suivant ne dépend que de l'état courant
    * (et, pour le tourniquet, de sa position) ; la trajectoire est donc ultimement périodique
-   * dès qu'un état se répète. Renvoie { status, tau0, tau, word, agents: [{ mean, lo, hi, y, gamma }] }.
+   * dès qu'un état se répète (on ne cherche la répétition qu'après le dernier apport ponctuel). Renvoie { status, tau0, tau, word, agents: [{ mean, lo, hi, y, gamma }] }.
    */
   function asymptotic(cfg, X, limit = 60000) {
     if (cfg.chi === "random") return { status: "random" };
     if (X > 1 + 1e-12) return { status: "famine" };
     const S = new Sim(cfg), seen = new Map(), rot = S.chi === "rot";
-    for (let t = 0; t <= limit; t++) {
+    for (let t = 0; t <= limit + S.lastBoost + 1; t++) {
       if (t > S.len) S.step();
+      if (t <= S.lastBoost) continue;
       const key = Array.prototype.join.call(S.row(t), ",") + (rot ? "|" + S.rot : "");
       const t0 = seen.get(key);
       if (t0 !== undefined) {

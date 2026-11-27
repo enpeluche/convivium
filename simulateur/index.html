@@ -62,7 +62,7 @@
     </div>
     <div class="row knobs">
       <label class="knob"><span><span data-i18n="speed">Vitesse</span> <b id="speedval"></b> <span data-i18n="per_s"></span></span>
-        <input type="range" id="speed" min="0" max="8" step="1"></label>
+        <input type="range" id="speed" min="0" max="9" step="1"></label>
       <label class="knob"><span><span data-i18n="horizon">Horizon</span> <b id="winval"></b></span>
         <input type="range" id="win" min="10" max="300" step="10"></label>
       <label class="toggle small"><input type="checkbox" id="whole"> <span data-i18n="whole"></span></label>
@@ -114,6 +114,17 @@
           </table></div>
           <p class="msg" id="agentmsg" role="status" hidden></p>
           <button class="link" id="addagent" type="button" data-i18n="add_agent"></button>
+        </div>
+
+        <div class="group">
+          <span class="label" data-i18n="boosts">Augmentation de ressource</span>
+          <p class="hint" data-i18n="boost_hint"></p>
+          <div class="tablewrap" id="boosttab"><table class="edit boost">
+            <thead><tr><th data-i18n="col_boost_agent">agent</th><th>t</th><th data-i18n="col_boost_q">quantité</th><th></th></tr></thead>
+            <tbody id="boosts"></tbody>
+          </table></div>
+          <p class="msg" id="boostmsg" role="status" hidden></p>
+          <button class="link" id="addboost" type="button" data-i18n="add_boost"></button>
         </div>
 
         <div class="group">

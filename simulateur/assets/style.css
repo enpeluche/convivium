@@ -18,6 +18,7 @@
   --accent: #7451eb; --accent-fg: #ffffff; --accent-soft: rgba(116, 81, 235, 0.12);
   --shadow: 0 4px 15px rgba(39, 26, 56, 0.07);
   --plus: #2f8a3a; --minus: #c92a3a; --warn: #b7791f;
+  --boost: #f5c518; --boost-strong: #c99a00;
 
   /* couleurs des agents A … H */
   --a0: #7451eb; --a1: #e0565b; --a2: #1a9e8f; --a3: #d98e04; --a4: #2f6fdb; --a5: #c2409a; --a6: #6b8e23; --a7: #8a5a3c;
@@ -30,6 +31,7 @@
     --accent: #9d85ff; --accent-fg: #140f1f; --accent-soft: rgba(157, 133, 255, 0.16);
     --shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
     --plus: #5cc66a; --minus: #ff6b75; --warn: #e2a64a;
+    --boost: #f5c518; --boost-strong: #f5c518;
     --a0: #9d85ff; --a1: #ff7a7f; --a2: #3cc8b6; --a3: #ffb02e; --a4: #6f9bff; --a5: #f06bbd; --a6: #a3c94a; --a7: #c9915c;
     color-scheme: dark;
   }
@@ -186,6 +188,9 @@ table.edit tfoot td#xtotal { color: var(--fg); font-weight: 600; padding-left: 6
 table.edit tr.hl td { background: var(--accent-soft); }
 table.edit input.bad { border-color: var(--minus); }
 .chip { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; font-weight: 650; color: #fff; font-size: 0.85rem; }
+table.edit.boost select { padding: 4px 5px 4px 10px; font-size: 0.86rem; font-weight: 600; min-width: 3.6rem; }
+table.edit.boost td:first-child { width: 4.2rem; }
+.tip .boostline { color: var(--boost-strong); font-weight: 600; margin-top: 2px; }
 .del { font: inherit; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 7px; border-radius: 5px; font-size: 1rem; }
 .del:hover { color: var(--minus); background: var(--bg); }
 .msg { margin: 0; font-size: 0.8rem; color: var(--warn); }

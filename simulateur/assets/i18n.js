@@ -32,6 +32,14 @@ const I18N = {
     err_u0: "u(0) doit être un entier positif ou nul.",
     agent_full: "Huit agents au plus.",
 
+    boosts: "Augmentation de ressource",
+    boost_hint: "Une seule fois, à l'instant t, l'agent reçoit q unités de plus : σ devient σ + q pour ce seul pas.",
+    col_boost_agent: "agent", col_boost_q: "q",
+    add_boost: "+ Ajouter un apport", remove_boost: "Retirer cet apport",
+    err_boost_t: "t doit être un entier positif ou nul.",
+    err_boost_q: "La quantité doit être un entier au moins égal à 1.",
+    tip_boost: "apport :",
+
     policy: "Politique",
     policy_name: "Servir le plus grand état normalisé",
     chi: "Départage des ex æquo (χ)",
@@ -49,7 +57,7 @@ const I18N = {
     opt_ref: "Références théoriques",
 
     main_title: "États u<sub>i</sub>(t)", main_title_norm: "États normalisés u<sub>i</sub>(t) / λ<sub>i</sub>",
-    main_hint: "Survolez une courbe pour la mettre en avant ; cliquez sur la légende pour masquer un agent. Bande du bas : l'agent servi à chaque instant.",
+    main_hint: "Survolez une courbe pour la mettre en avant ; cliquez sur la légende pour masquer un agent. Bande du bas : l'agent servi à chaque instant. Colonne jaune : un apport ponctuel de ressource.",
     shortcuts: "Raccourcis : Espace lecture/pause · ← → un instant · Début t = 0",
     mean_label: "⟨u⟩",
     tip_served: "servi",
@@ -115,6 +123,7 @@ const I18N = {
       ties: ["Ex æquo : quatre agents identiques", "λ = 1, σ = 4, tous partent de 0 : à chaque instant, χ décide. Comparez les ordres de priorité, le tourniquet et le hasard."],
       deux: ["Deux agents en abondance", "λ = (1, 2), σ = (3, 4) : X = 5/6."],
       deuxf: ["Deux agents en famine", "λ = (2, 3), σ = (3, 5) : X = 19/15."],
+      phase: ["Deux agents déphasés, puis un apport", "λ = (1, 1), σ = (2, 2), départ (2, 0), B prioritaire : A vaut 2, 1, 2, 1… et B 0, 1, 0, 1…, avec une égalité un pas sur deux. Un apport de 1 à A en t = 6 casse ce régime : A vaut ensuite 0, 1, 0… et B 1, 0, 1…"],
     },
   },
 
@@ -145,6 +154,14 @@ const I18N = {
     err_u0: "u(0) must be a non-negative integer.",
     agent_full: "Eight agents at most.",
 
+    boosts: "Resource augmentation",
+    boost_hint: "Once, at time t, the agent receives q extra units: σ becomes σ + q for that single step.",
+    col_boost_agent: "agent", col_boost_q: "q",
+    add_boost: "+ Add a boost", remove_boost: "Remove this boost",
+    err_boost_t: "t must be a non-negative integer.",
+    err_boost_q: "The amount must be an integer, at least 1.",
+    tip_boost: "boost:",
+
     policy: "Policy",
     policy_name: "Serve the largest normalized state",
     chi: "Tie-breaking (χ)",
@@ -162,7 +179,7 @@ const I18N = {
     opt_ref: "Theoretical references",
 
     main_title: "States u<sub>i</sub>(t)", main_title_norm: "Normalized states u<sub>i</sub>(t) / λ<sub>i</sub>",
-    main_hint: "Hover a curve to highlight it; click the legend to hide an agent. Bottom band: the agent served at each time step.",
+    main_hint: "Hover a curve to highlight it; click the legend to hide an agent. Bottom band: the agent served at each time step. Yellow column: a one-off resource boost.",
     shortcuts: "Shortcuts: Space play/pause · ← → one step · Home t = 0",
     mean_label: "⟨u⟩",
     tip_served: "served",
@@ -228,6 +245,7 @@ const I18N = {
       ties: ["Ties: four identical agents", "λ = 1, σ = 4, all start at 0: χ decides at every step. Compare priority orders, round robin and random."],
       deux: ["Two agents in abundance", "λ = (1, 2), σ = (3, 4): X = 5/6."],
       deuxf: ["Two agents under scarcity", "λ = (2, 3), σ = (3, 5): X = 19/15."],
+      phase: ["Two agents out of phase, then a boost", "λ = (1, 1), σ = (2, 2), start (2, 0), B has priority: A goes 2, 1, 2, 1… and B 0, 1, 0, 1…, with a tie every other step. A boost of 1 to A at t = 6 breaks this regime: A then goes 0, 1, 0… and B 1, 0, 1…"],
     },
   },
 };
