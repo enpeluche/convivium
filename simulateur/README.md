@@ -21,6 +21,7 @@ Il suffit d'ouvrir `index.html` dans un navigateur, sans serveur ni connexion In
 ## Ajouter un scénario
 
 1. Ajouter une entrée dans `PRESETS` (`app.js`) : `[u(0), λ, σ]` par agent, avec σ > λ.
+   Champs facultatifs : `chi`, `prio` (ordre de priorité, ex. `[1, 0]`) et `boosts` (apports ponctuels `{ agent, t, q }` : σ_agent + q à l'instant t, une seule fois).
 2. Ajouter son nom et sa description dans `presets`, en français et en anglais (`i18n.js`).
 
 ## Raccourcis

@@ -40,7 +40,8 @@ const Charts = (() => {
      spec = {
        series: [{ id, color, label, width, dash, value: t => nombre | null, hidden }],
        x0, x1, tEnd,               // fenêtre en abscisse, instant courant (réel)
-       ribbon: { served: t => k, color: k => couleur, name: k => lettre } | null,
+       ribbon: { served: t => k, color: k => couleur, name: k => lettre,
+                 boostTimes: [t…], boost: t => [{ i, q }] | null } | null,   // apports ponctuels : colonne jaune
        refs: [{ y, color, label, dash }],
        endLabels: bool, integerY: bool, yLabel: texte
      }
@@ -97,6 +98,9 @@ const Charts = (() => {
         const k = S.ribbon.served(t);
         if (k !== null && k >= 0) head += ` · ${S.ribbon.servedLabel} <span class="sw" style="margin-left:4px;background:${S.ribbon.color(k)}"></span> ${S.ribbon.name(k)}` +
           (S.ribbon.ties && S.ribbon.ties(t) > 1 ? ` <span class="muted">(${S.ribbon.tieLabel(S.ribbon.ties(t))})</span>` : "");
+        const B = S.ribbon.boost && S.ribbon.boost(t);
+        if (B && B.length) head += `<div class="boostline">${S.ribbon.boostLabel} ` +
+          B.map(b => `<span class="sw" style="background:${S.ribbon.color(b.i)}"></span>${S.ribbon.name(b.i)} +${b.q}`).join(", ") + `</div>`;
       }
       this.tip.innerHTML = head + rows.map(({ s, v }) =>
         `<div class="${s.id === this.hoverId ? "on" : ""}"><span class="sw" style="background:${s.color}"></span>${s.label}<span class="v">${fmt(v)}</span></div>`).join("");
@@ -186,6 +190,17 @@ const Charts = (() => {
       }
       g.globalAlpha = 1; g.setLineDash([]);
 
+      // apports ponctuels de ressource : colonne jaune entre t et t + 1, trait à gauche, étiquette en haut
+      const boosts = [];
+      if (spec.ribbon && spec.ribbon.boostTimes) for (const t of spec.ribbon.boostTimes) {
+        if (t + 1 < x0 || t > x1 || t >= tEnd) continue;
+        const xa = X(t), xb = Math.max(xa + 3, Math.min(X(t + 1), X(tEnd)));
+        g.fillStyle = css("--boost"); g.globalAlpha = 0.28; g.fillRect(xa, T, xb - xa, ph);
+        g.globalAlpha = 1; g.strokeStyle = css("--boost-strong"); g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(Math.round(xa) + 0.5, T); g.lineTo(Math.round(xa) + 0.5, T + ph); g.stroke();
+        boosts.push({ t, xa });
+      }
+
       // mise en avant animée : e ∈ [−1, 1] (−1 estompé, 1 en avant)
       const any = this.hoverId && spec.series.some(s => s.id === this.hoverId);
       for (const s of spec.series) {
@@ -264,6 +279,20 @@ const Charts = (() => {
           if (xb - xa >= 12) { g.fillStyle = "#fff"; g.fillText(Rb.name(k), (xa + xb) / 2, top + h / 2 + 0.5); }
         }
         g.restore();
+      }
+      // étiquettes des apports (par-dessus les courbes) : « A +1 » dans la couleur de l'agent
+      if (boosts.length && boosts.length <= pw / 30) {
+        g.font = `600 10px ${css("--font")}`; g.textBaseline = "middle"; g.textAlign = "left";
+        for (const { t, xa } of boosts) {
+          let x = xa + 3;
+          for (const b of spec.ribbon.boost(t) || []) {
+            const txt = `${spec.ribbon.name(b.i)} +${b.q}`, w = g.measureText(txt).width + 8;
+            if (x + w > L + pw) break;
+            g.fillStyle = spec.ribbon.color(b.i); g.beginPath(); g.roundRect ? g.roundRect(x, T + 4, w, 15, 4) : g.rect(x, T + 4, w, 15); g.fill();
+            g.fillStyle = "#fff"; g.fillText(txt, x + 4, T + 12);
+            x += w + 3;
+          }
+        }
       }
       g.strokeStyle = css("--line"); g.lineWidth = 1; g.strokeRect(L + 0.5, T + 0.5, pw - 1, ph - 1);
 

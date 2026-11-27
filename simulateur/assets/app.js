@@ -34,8 +34,10 @@ const PRESETS = {
   ties:  { agents: [[0, 1, 4], [0, 1, 4], [0, 1, 4], [0, 1, 4]] },
   deux:  { agents: [[0, 1, 3], [0, 2, 4]] },
   deuxf: { agents: [[0, 2, 3], [0, 3, 5]] },
+  // deux agents déphasés (2,0) ↔ (1,1) ; un apport ponctuel à A en t = 6 casse ce régime
+  phase: { agents: [[2, 1, 2], [0, 1, 2]], chi: "prio", prio: [1, 0], boosts: [{ agent: 0, t: 6, q: 1 }] },
 };
-const SPEEDS = [0.5, 1, 2, 4, 8, 16, 32, 64, 128];
+const SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128];
 const MAX_T = 200000;
 const STORE = "convivium-simulateur-v1";
 
@@ -47,8 +49,8 @@ const avar = i => `var(--a${i % 8})`;                // pour le HTML
 /* ---------- État ---------- */
 const state = {
   lang: "fr", tab: "sim", preset: "eq5",
-  cfg: { agents: [], chi: "prio", prio: [], seed: 1 },
-  norm: false, mean: false, speedIdx: 2, win: 60, whole: false,
+  cfg: { agents: [], chi: "prio", prio: [], seed: 1, boosts: [] },
+  norm: false, mean: false, speedIdx: 3, win: 60, whole: false,
   histsrc: "all", glob: "range", per: "y",
 };
 const hidden = new Set();          // agents masqués dans les tracés
@@ -126,7 +128,9 @@ function syncHover() {
 
 function ribbon() {
   return { served: t => sim.served(t), color: acol, name: k => NAMES[k],
-    servedLabel: tr("tip_served"), ties: t => sim.ties(t), tieLabel: k => tr("tip_tie", { k }) };
+    servedLabel: tr("tip_served"), ties: t => sim.ties(t), tieLabel: k => tr("tip_tie", { k }),
+    boost: t => { const B = sim.boostAt(t); if (!B) return null; const L = []; B.forEach((q, i) => { if (q > 0) L.push({ i, q }); }); return L; },
+    boostLabel: tr("tip_boost"), boostTimes: [...sim.boost.keys()].sort((a, b) => a - b) };
 }
 function meanAt(t, norm) {
   if (!sim.has(t)) return null;
@@ -345,9 +349,9 @@ function renderLegends() {
 /* =============================================================================
    Éditeur des agents
    ============================================================================= */
-function flash(html) {
-  const m = $("agentmsg"); m.innerHTML = html; m.hidden = false;
-  clearTimeout(flash.t); flash.t = setTimeout(() => { m.hidden = true; }, 6000);
+function flash(html, id = "agentmsg") {
+  const m = $(id); m.innerHTML = html; m.hidden = false;
+  clearTimeout(m._t); m._t = setTimeout(() => { m.hidden = true; }, 6000);
 }
 function renderAgents() {
   const tb = $("agents"), A = state.cfg.agents;
@@ -363,7 +367,9 @@ function renderAgents() {
     inp.addEventListener("keydown", e => { if (e.key === "Enter") inp.blur(); });
   });
   tb.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
-    const d = +b.dataset.del; state.cfg.agents.splice(d, 1); state.cfg.prio = state.cfg.prio.filter(i => i !== d).map(i => (i > d ? i - 1 : i)); hidden.clear(); renderChi(); custom(); renderAgents(); rebuild(); renderLegends();
+    const d = +b.dataset.del; state.cfg.agents.splice(d, 1); state.cfg.prio = state.cfg.prio.filter(i => i !== d).map(i => (i > d ? i - 1 : i));
+    state.cfg.boosts = state.cfg.boosts.filter(x => x.agent !== d).map(x => ({ ...x, agent: x.agent > d ? x.agent - 1 : x.agent }));
+    hidden.clear(); renderChi(); custom(); renderAgents(); renderBoosts(); rebuild(); renderLegends();
   }));
   tb.querySelectorAll("tr").forEach(r => { r.onmouseenter = () => onHover("a" + r.dataset.agent); r.onmouseleave = () => onHover(null); });
   $("addagent").disabled = A.length >= Model.MAX_AGENTS;
@@ -393,13 +399,42 @@ function custom() {
   state.preset = "custom"; $("preset").value = "custom"; $("presethint").textContent = "";
 }
 
+/* ---------- Apports ponctuels de ressource : σ_i := σ_i + q, une seule fois, à l'instant t ---------- */
+function renderBoosts() {
+  const tb = $("boosts"), Bs = state.cfg.boosts, n = state.cfg.agents.length;
+  $("boosttab").hidden = !Bs.length;
+  tb.innerHTML = Bs.map((b, j) => `<tr data-agent="${b.agent}">` +
+    `<td><select id="bo-${j}-agent" aria-label="${tr("col_boost_agent")}">${Array.from({ length: n }, (_, i) => `<option value="${i}"${i === b.agent ? " selected" : ""}>${NAMES[i]}</option>`).join("")}</select></td>` +
+    `<td><input type="number" id="bo-${j}-t" min="0" step="1" value="${b.t}" aria-label="t"></td>` +
+    `<td><input type="number" id="bo-${j}-q" min="1" step="1" value="${b.q}" aria-label="${tr("col_boost_q")}"></td>` +
+    `<td><button class="del" type="button" data-bdel="${j}" title="${tr("remove_boost")}" aria-label="${tr("remove_boost")}">×</button></td></tr>`).join("");
+  tb.querySelectorAll("select").forEach(sel => { sel.style.boxShadow = `inset 4px 0 0 ${avar(+sel.value)}`; });
+  tb.querySelectorAll("input, select").forEach(inp => {
+    inp.addEventListener("change", () => commitBoost(inp));
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") inp.blur(); });
+  });
+  tb.querySelectorAll("[data-bdel]").forEach(b => b.addEventListener("click", () => {
+    state.cfg.boosts.splice(+b.dataset.bdel, 1); custom(); renderBoosts(); rebuild();
+  }));
+  tb.querySelectorAll("tr").forEach(r => { r.onmouseenter = () => onHover("a" + r.dataset.agent); r.onmouseleave = () => onHover(null); });
+}
+function commitBoost(inp) {
+  const [, sj, key] = inp.id.split("-"), b = state.cfg.boosts[+sj], v = Number(inp.value);
+  if (key === "agent") b.agent = v;
+  else if (key === "t") { if (!Number.isInteger(v) || v < 0 || v > MAX_T) { flash(tr("err_boost_t"), "boostmsg"); inp.value = b.t; return; } b.t = v; }
+  else { if (!Number.isInteger(v) || v < 1) { flash(tr("err_boost_q"), "boostmsg"); inp.value = b.q; return; } b.q = v; }
+  if (key === "agent") { inp.style.boxShadow = `inset 4px 0 0 ${avar(v)}`; inp.closest("tr").dataset.agent = v; }
+  custom(); rebuild();
+}
+
 /* =============================================================================
    Scénarios, politique, options
    ============================================================================= */
 function loadPreset(key) {
   const P = PRESETS[key]; if (!P) return;
   state.preset = key;
-  state.cfg = { agents: P.agents.map(([u0, lam, sig]) => ({ u0, lam, sig })), chi: state.cfg.chi || "prio", prio: Array.from({ length: P.agents.length }, (_, i) => i), seed: 1 };
+  state.cfg = { agents: P.agents.map(([u0, lam, sig]) => ({ u0, lam, sig })), chi: P.chi || state.cfg.chi || "prio",
+    prio: P.prio ? P.prio.slice() : Array.from({ length: P.agents.length }, (_, i) => i), seed: 1, boosts: (P.boosts || []).map(b => ({ ...b })) };
   hidden.clear();
   tc = 0; renderAll(); rebuild(); renderLegends();
 }
@@ -480,7 +515,7 @@ function applyLang() {
   $("playtxt").textContent = tr(playing ? "pause" : "play");
 }
 function renderAll() {
-  applyLang(); renderPresets(); renderChi(); renderKnobs(); renderSelects(); renderAgents(); renderAbout();
+  applyLang(); renderPresets(); renderChi(); renderKnobs(); renderSelects(); renderAgents(); renderBoosts(); renderAbout();
 }
 function setTab(t) {
   state.tab = t;
@@ -493,8 +528,8 @@ function setTab(t) {
    Sauvegarde locale et lien partageable
    ============================================================================= */
 function snapshot() {
-  const { lang, tab, preset, cfg, norm, mean, speedIdx, win, whole, histsrc, glob, per } = state;
-  return { lang, tab, preset, cfg, norm, mean, speedIdx, win, whole, histsrc, glob, per };
+  const { lang, tab, preset, cfg, norm, mean, win, whole, histsrc, glob, per } = state;
+  return { lang, tab, preset, cfg, norm, mean, speed: SPEEDS[state.speedIdx], win, whole, histsrc, glob, per };
 }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(snapshot())); } catch (e) { /* stockage indisponible */ } }
 function validCfg(c) {
@@ -505,7 +540,9 @@ function validCfg(c) {
   // anciennes valeurs : "min" = ordre A, B, C… ; "max" = ordre inverse
   const chi = Model.CHIS.includes(c.chi) ? c.chi : "prio";
   const prio = c.chi === "max" ? id.slice().reverse() : Model.normPrio(c.prio, n);
-  return { agents, chi, prio, seed: Number.isInteger(c.seed) ? c.seed : 1 };
+  const boosts = (Array.isArray(c.boosts) ? c.boosts : []).map(b => ({ agent: Number(b.agent), t: Number(b.t), q: Number(b.q) }))
+    .filter(b => Number.isInteger(b.agent) && b.agent >= 0 && b.agent < n && Number.isInteger(b.t) && b.t >= 0 && b.t <= MAX_T && Number.isInteger(b.q) && b.q >= 1);
+  return { agents, chi, prio, seed: Number.isInteger(c.seed) ? c.seed : 1, boosts };
 }
 function restore(obj) {
   if (!obj || typeof obj !== "object") return false;
@@ -515,7 +552,8 @@ function restore(obj) {
   if (["fr", "en"].includes(obj.lang)) state.lang = obj.lang;
   if (["sim", "ana", "model", "about"].includes(obj.tab)) state.tab = obj.tab;
   for (const k of ["norm", "mean", "whole"]) if (typeof obj[k] === "boolean") state[k] = obj[k];
-  if (Number.isInteger(obj.speedIdx) && SPEEDS[obj.speedIdx]) state.speedIdx = obj.speedIdx;
+  if (SPEEDS.includes(obj.speed)) state.speedIdx = SPEEDS.indexOf(obj.speed);
+  else if (Number.isInteger(obj.speedIdx) && SPEEDS[obj.speedIdx + 1]) state.speedIdx = obj.speedIdx + 1;   // ancien format (sans 1/4)
   if (Number.isInteger(obj.win) && obj.win >= 10 && obj.win <= 300) state.win = obj.win;
   if (["all", "win", "per"].includes(obj.histsrc)) state.histsrc = obj.histsrc;
   if (obj.glob in I18N.fr.glob_opts) state.glob = obj.glob;
@@ -554,7 +592,7 @@ function exportTraj() {
     rows.push([t, t < T ? NAMES[sim.served(t)] : "", t < T ? sim.ties(t) : "", ...sim.row(t), ...sim.Nrow(t),
       ...L.map((_, i) => (t ? csvNum(sim.Nc(t, i) / t) : "")), t < T ? sim.waste(t) : "", csvNum(sim.gamma(t))]);
   }
-  const meta = `# lambda=${sim.lam.join(" ")} ; sigma=${sim.sig.join(" ")} ; u0=${state.cfg.agents.map(a => a.u0).join(" ")} ; chi=${state.cfg.chi} ; priority=${state.cfg.prio.map(i => NAMES[i]).join("")} ; seed=${state.cfg.seed}\n`;
+  const meta = `# lambda=${sim.lam.join(" ")} ; sigma=${sim.sig.join(" ")} ; u0=${state.cfg.agents.map(a => a.u0).join(" ")} ; chi=${state.cfg.chi} ; priority=${state.cfg.prio.map(i => NAMES[i]).join("")} ; seed=${state.cfg.seed} ; boosts=${state.cfg.boosts.map(b => `${NAMES[b.agent]}@${b.t}+${b.q}`).join(" ") || "none"}\n`;
   download(`trajectoire_${stamp()}_t${T}.csv`, new Blob([meta + csv(rows)], { type: "text/csv" }));
 }
 function exportAgents() {
@@ -650,6 +688,10 @@ function wire() {
     state.cfg.agents.push({ u0: 0, lam: 1, sig: 4 }); state.cfg.prio.push(state.cfg.agents.length - 1); renderChi(); custom(); renderAgents(); rebuild(); renderLegends();
     $(`ag-${state.cfg.agents.length - 1}-lam`).focus();
   });
+  $("addboost").addEventListener("click", () => {
+    state.cfg.boosts.push({ agent: 0, t: Math.floor(tc), q: 1 }); custom(); renderBoosts(); rebuild();
+    $(`bo-${state.cfg.boosts.length - 1}-agent`).focus();
+  });
   $("zerou0").addEventListener("click", () => { state.cfg.agents.forEach(a => { a.u0 = 0; }); custom(); renderAgents(); rebuild(); });
   $("norm").addEventListener("change", e => { state.norm = e.target.checked; charts.main.resetScale(); renderLegends(); dirty = true; save(); });
   $("mean").addEventListener("change", e => { state.mean = e.target.checked; renderLegends(); dirty = true; save(); });
@@ -693,7 +735,7 @@ function wire() {
   // redimensionnement et thème
   const ro = new ResizeObserver(() => { dirty = true; });
   document.querySelectorAll(".chartbox").forEach(b => ro.observe(b));
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { Charts.clearCss(); renderAgents(); renderLegends(); lastT = -1; dirty = true; });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { Charts.clearCss(); renderAgents(); renderBoosts(); renderLegends(); lastT = -1; dirty = true; });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { dirty = true; });
 }
 
@@ -714,7 +756,7 @@ function wire() {
   if (!ok) { try { ok = restore(JSON.parse(localStorage.getItem(STORE))); } catch (e) { ok = false; } tc = 0; }
   const qlang = new URLSearchParams(location.search).get("lang");   // ?lang=fr|en l'emporte (lien depuis l'accueil)
   if (qlang === "fr" || qlang === "en") state.lang = qlang;
-  if (!ok) { const P = PRESETS.eq5; state.cfg = { agents: P.agents.map(([u0, lam, sig]) => ({ u0, lam, sig })), chi: "prio", prio: P.agents.map((_, i) => i), seed: 1 }; }
+  if (!ok) { const P = PRESETS.eq5; state.cfg = { agents: P.agents.map(([u0, lam, sig]) => ({ u0, lam, sig })), chi: "prio", prio: P.agents.map((_, i) => i), seed: 1, boosts: [] }; }
 
   wire();
   renderAll();
