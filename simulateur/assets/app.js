@@ -57,6 +57,9 @@ const hidden = new Set();          // agents masqués dans les tracés
 let sim, info, asym = null;
 let tc = 0, playing = false, lastTs = 0, dirty = true, lastT = -1, hover = null;
 let tablesStale = true, lastTables = 0;
+let step = null;                   // pas animé en cours : { from, to, t0 }
+const STEP_MS = 350;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 /* ---------- Langue et nombres ---------- */
 function tr(key, vars) {
@@ -219,7 +222,12 @@ function drawHist() {
    Lecture
    ============================================================================= */
 function frame(ts) {
-  if (playing) {
+  if (step) {
+    const p = Math.min(1, (ts - step.t0) / STEP_MS), e = 1 - Math.pow(1 - p, 3);   // ease-out
+    tc = step.from + (step.to - step.from) * e;
+    if (p >= 1) { tc = step.to; step = null; }
+    dirty = true;
+  } else if (playing) {
     const dt = lastTs ? Math.min(0.1, (ts - lastTs) / 1000) : 0;
     tc = Math.min(MAX_T, tc + dt * SPEEDS[state.speedIdx]);
     if (tc >= MAX_T) setPlaying(false);
@@ -243,12 +251,21 @@ function render() {
   else if (tablesStale && state.tab === "ana") dirty = true;
 }
 function setPlaying(p) {
-  playing = p;
+  playing = p; step = null;
   $("playtxt").textContent = tr(p ? "pause" : "play");
   $("playico").setAttribute("d", ICONS[p ? "pause" : "play"]);
   lastTs = 0; dirty = true;
 }
 function jump(t) { setPlaying(false); tc = Math.max(0, Math.min(MAX_T, t)); dirty = true; lastT = -1; }
+// pas de ±1 : glisse en douceur vers l'instant entier voisin (les appuis rapides s'enchaînent)
+function stepBy(d) {
+  const base = step ? step.to : (d > 0 ? Math.floor(tc) : Math.ceil(tc));
+  const to = Math.max(0, Math.min(MAX_T, base + d));
+  if (reduceMotion.matches) { jump(to); return; }
+  setPlaying(false);
+  step = { from: tc, to, t0: performance.now() };
+  dirty = true; lastT = -1;
+}
 
 /* =============================================================================
    Affichages textuels
@@ -436,7 +453,7 @@ function loadPreset(key) {
   state.cfg = { agents: P.agents.map(([u0, lam, sig]) => ({ u0, lam, sig })), chi: P.chi || state.cfg.chi || "prio",
     prio: P.prio ? P.prio.slice() : Array.from({ length: P.agents.length }, (_, i) => i), seed: 1, boosts: (P.boosts || []).map(b => ({ ...b })) };
   hidden.clear();
-  tc = 0; renderAll(); rebuild(); renderLegends();
+  step = null; tc = 0; renderAll(); rebuild(); renderLegends();
 }
 function renderPresets() {
   const P = tr("presets");
@@ -558,7 +575,7 @@ function restore(obj) {
   if (["all", "win", "per"].includes(obj.histsrc)) state.histsrc = obj.histsrc;
   if (obj.glob in I18N.fr.glob_opts) state.glob = obj.glob;
   if (obj.per in I18N.fr.per_opts) state.per = obj.per;
-  if (Number.isFinite(obj.t) && obj.t >= 0) tc = Math.min(MAX_T, Math.floor(obj.t));
+  if (Number.isFinite(obj.t) && obj.t >= 0) step = null, tc = Math.min(MAX_T, Math.floor(obj.t));
   return true;
 }
 const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -647,7 +664,7 @@ function importJson(file) {
       const o = JSON.parse(rd.result), cfg = validCfg(o.cfg || o);
       if (!cfg) throw new Error("bad");
       state.cfg = cfg; state.preset = "custom"; hidden.clear();
-      tc = Number.isFinite(o.t) ? Math.max(0, Math.min(MAX_T, Math.floor(o.t))) : 0;
+      step = null; tc = Number.isFinite(o.t) ? Math.max(0, Math.min(MAX_T, Math.floor(o.t))) : 0;
       renderAll(); rebuild(); renderLegends(); toast(tr("toast_imported"));
     } catch (e) { toast(tr("toast_import_err")); }
   };
@@ -672,8 +689,8 @@ function wire() {
   document.querySelectorAll("path[data-icon]").forEach(p => p.setAttribute("d", ICONS[p.dataset.icon]));
 
   $("play").addEventListener("click", () => setPlaying(!playing));
-  $("fwd").addEventListener("click", () => jump(Math.floor(tc) + 1));
-  $("back").addEventListener("click", () => jump(Math.ceil(tc) - 1));
+  $("fwd").addEventListener("click", () => stepBy(1));
+  $("back").addEventListener("click", () => stepBy(-1));
   $("zero").addEventListener("click", () => jump(0));
   $("speed").addEventListener("input", e => { state.speedIdx = +e.target.value; renderKnobs(); save(); });
   $("win").addEventListener("input", e => { state.win = +e.target.value; renderKnobs(); dirty = true; lastT = -1; save(); });
@@ -727,8 +744,8 @@ function wire() {
     if (e.target.closest && e.target.closest(".priolist")) return;
     if (state.tab !== "sim" && state.tab !== "ana") return;
     if (e.key === " " && tag !== "button") { e.preventDefault(); setPlaying(!playing); }
-    else if (e.key === "ArrowRight" && e.target.type !== "range") { e.preventDefault(); jump(Math.floor(tc) + 1); }
-    else if (e.key === "ArrowLeft" && e.target.type !== "range") { e.preventDefault(); jump(Math.ceil(tc) - 1); }
+    else if (e.key === "ArrowRight" && e.target.type !== "range") { e.preventDefault(); stepBy(1); }
+    else if (e.key === "ArrowLeft" && e.target.type !== "range") { e.preventDefault(); stepBy(-1); }
     else if (e.key === "Home") { e.preventDefault(); jump(0); }
   });
 
